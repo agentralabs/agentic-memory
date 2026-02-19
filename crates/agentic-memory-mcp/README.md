@@ -45,14 +45,14 @@ cargo build --release
 ### Run (stdio transport — default)
 
 ```bash
-agentic-memory-mcp serve --memory /path/to/brain.amem
+agentic-memory-mcp --memory ~/.brain.amem serve
 ```
 
 ### Run (SSE transport)
 
 ```bash
 cargo build --release --features sse
-agentic-memory-mcp serve-http --memory /path/to/brain.amem --addr 127.0.0.1:3000
+agentic-memory-mcp --memory ~/.brain.amem serve-http --addr 127.0.0.1:3000
 ```
 
 ## Configuration with MCP Clients
@@ -66,7 +66,7 @@ Add to your Claude Desktop MCP config (`~/Library/Application Support/Claude/cla
   "mcpServers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["serve", "--memory", "/path/to/brain.amem"]
+      "args": ["--memory", "~/.brain.amem", "serve"]
     }
   }
 }
@@ -81,7 +81,7 @@ Add to `~/.claude/mcp.json`:
   "mcpServers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["serve", "--memory", "/path/to/brain.amem"]
+      "args": ["--memory", "~/.brain.amem", "serve"]
     }
   }
 }
@@ -96,7 +96,7 @@ Add to `.vscode/settings.json`:
   "mcp.servers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["serve", "--memory", "${workspaceFolder}/.memory/project.amem"]
+      "args": ["--memory", "${workspaceFolder}/.memory/project.amem", "serve"]
     }
   }
 }
@@ -111,11 +111,13 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
   "mcpServers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["serve", "--memory", "/path/to/brain.amem"]
+      "args": ["--memory", "~/.brain.amem", "serve"]
     }
   }
 }
 ```
+
+> **Do not use `/tmp` for memory files** — macOS and Linux clear this directory periodically. Use `~/.brain.amem` for persistent storage.
 
 ## Tools (12)
 
@@ -177,13 +179,13 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 
 ```bash
 # Start server (stdio)
-agentic-memory-mcp serve --memory brain.amem
+agentic-memory-mcp --memory ~/.brain.amem serve
 
 # Start server (SSE, requires --features sse)
 agentic-memory-mcp serve-http --addr 127.0.0.1:3000
 
 # Validate a memory file
-agentic-memory-mcp validate --memory brain.amem
+agentic-memory-mcp --memory ~/.brain.amem validate
 
 # Print server info as JSON
 agentic-memory-mcp info

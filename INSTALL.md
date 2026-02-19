@@ -107,7 +107,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["serve", "--memory", "~/brain.amem"]
+      "args": ["--memory", "~/.brain.amem", "serve"]
     }
   }
 }
@@ -122,11 +122,13 @@ Add to `.vscode/settings.json`:
   "mcp.servers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["serve", "--memory", "${workspaceFolder}/.memory/project.amem"]
+      "args": ["--memory", "${workspaceFolder}/.memory/project.amem", "serve"]
     }
   }
 }
 ```
+
+> **Do not use `/tmp` for memory files** — macOS and Linux clear this directory periodically. Use `~/.brain.amem` for persistent storage.
 
 ### Verify
 

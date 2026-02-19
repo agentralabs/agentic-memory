@@ -277,7 +277,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["serve", "--memory", "~/brain.amem"]
+      "args": ["--memory", "~/.brain.amem", "serve"]
     }
   }
 }

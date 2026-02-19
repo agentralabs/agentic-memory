@@ -23,7 +23,7 @@ cat > "$CONFIG_FILE" << EOF
   "mcpServers": {
     "agentic-memory": {
       "command": "$(pwd)/target/release/agentic-memory-mcp",
-      "args": ["serve", "--memory", "$TEST_MEMORY"]
+      "args": ["--memory", "$TEST_MEMORY", "serve"]
     }
   }
 }
