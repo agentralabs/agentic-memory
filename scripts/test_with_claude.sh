@@ -6,8 +6,8 @@ echo "=== AgenticMemory + Claude Code Integration Test ==="
 # Build release binary
 cargo build --release
 
-# Create test memory file
-TEST_MEMORY="/tmp/claude_test_$(date +%s).amem"
+# Use a persistent memory file (not /tmp — macOS clears it periodically)
+TEST_MEMORY="$HOME/.brain.amem"
 
 # Configure Claude Desktop (macOS example)
 CONFIG_FILE="$HOME/Library/Application Support/Claude/claude_desktop_config.json"

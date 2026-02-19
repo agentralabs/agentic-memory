@@ -50,6 +50,7 @@ fn main() -> AmemResult<()> {
     }
 
     // Save to file
+    // For production use: ~/.brain.amem (not /tmp — macOS clears it periodically)
     let writer = AmemWriter::new(DEFAULT_DIMENSION);
     writer.write_to_file(&graph, std::path::Path::new("/tmp/example.amem"))?;
     println!("\nSaved to /tmp/example.amem");

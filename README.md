@@ -216,6 +216,8 @@ pip install amem-installer
 amem-install install --auto
 ```
 
+> **Warning:** Do not use `/tmp` for memory files -- macOS clears this directory periodically. Use `~/.brain.amem` or another persistent location.
+
 Detects Claude Code, Cursor, Windsurf, Continue, Ollama -- configures them all to share one brain. [Details ->](INSTALL.md)
 
 <p align="center">
