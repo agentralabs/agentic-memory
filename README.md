@@ -371,22 +371,6 @@ Cross-provider tests prove: facts, decisions, corrections, skills, and reasoning
 
 ---
 
-## The Ecosystem
-
-AgenticMemory is the foundation of a larger vision:
-
-| Product | What | Status |
-|:---|:---|:---:|
-| **AgenticMemory** | Portable brain for AI agents | v0.2 Shipping |
-| **AgenticCodebase** | Dependency graphs for entire codebases | Next |
-| **AgenticIdentity** | Trust & delegation for agent-to-agent auth | Planned |
-| **AgenticContract** | Natural language contracts, machine enforcement | Planned |
-| **AgenticOS** | Ambient intelligence layer for your OS | Planned |
-
-The formats are open. The protocols are open. The code is MIT-licensed.
-
----
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). The fastest ways to help:
