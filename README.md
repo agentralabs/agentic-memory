@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="#install"><img src="https://img.shields.io/badge/pip_install-agentic--memory-3B82F6?style=for-the-badge&logo=python&logoColor=white" alt="pip install"></a>
+  <a href="#install"><img src="https://img.shields.io/badge/pip_install-agentic--brain-3B82F6?style=for-the-badge&logo=python&logoColor=white" alt="pip install"></a>
   <a href="#install"><img src="https://img.shields.io/badge/cargo_install-amem-F59E0B?style=for-the-badge&logo=rust&logoColor=white" alt="cargo install"></a>
   <a href="https://github.com/agentic-revolution/agentic-memory/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge" alt="MIT License"></a>
   <a href="paper/agenticmemory-paper.pdf"><img src="https://img.shields.io/badge/Research-Paper-8B5CF6?style=for-the-badge" alt="Research Paper"></a>
@@ -153,7 +153,7 @@ Not just "facts." AgenticMemory stores **Facts**, **Decisions** (with reasoning)
 ### Python SDK (recommended for most users)
 
 ```bash
-pip install agentic-memory
+pip install agentic-brain
 ```
 
 ```python
@@ -168,10 +168,10 @@ print(brain.facts())
 
 ```bash
 # Pick your provider
-pip install agentic-memory[anthropic]   # Claude
-pip install agentic-memory[openai]      # GPT
-pip install agentic-memory[ollama]      # Local models
-pip install agentic-memory[all]         # All providers
+pip install agentic-brain[anthropic]   # Claude
+pip install agentic-brain[openai]      # GPT
+pip install agentic-brain[ollama]      # Local models
+pip install agentic-brain[all]         # All providers
 ```
 
 ### Rust CLI

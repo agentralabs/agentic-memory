@@ -114,7 +114,7 @@ For automated backups, copy the file between sessions (when no writes are in pro
 
 Yes. AgenticMemory supports Windows (x86_64) with the following notes:
 
-**Python SDK:** Pre-built wheels are available for Windows via `pip install agentic-memory`. No Rust toolchain needed.
+**Python SDK:** Pre-built wheels are available for Windows via `pip install agentic-brain`. No Rust toolchain needed.
 
 **Rust CLI:** Build from source with `cargo install agentic-memory` or `cargo build --release`. All tests pass on Windows. Memory-mapped I/O uses `CreateFileMapping`/`MapViewOfFile` under the hood.
 

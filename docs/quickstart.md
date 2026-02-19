@@ -7,7 +7,7 @@ Get AgenticMemory running in under 5 minutes. This guide covers installation, cr
 ### Python SDK
 
 ```bash
-pip install agentic-memory
+pip install agentic-brain
 ```
 
 Requires Python 3.9 or later. The package includes pre-built binaries for macOS (ARM and x86), Linux (x86_64), and Windows (x86_64). No Rust toolchain needed.

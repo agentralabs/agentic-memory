@@ -5,16 +5,16 @@ Python SDK for AgenticMemory — portable binary graph memory for AI agents.
 ## Install
 
 ```bash
-pip install agentic-memory
+pip install agentic-brain
 ```
 
 ### With LLM integrations
 
 ```bash
-pip install agentic-memory[anthropic]   # Claude
-pip install agentic-memory[openai]      # GPT
-pip install agentic-memory[ollama]      # Local models
-pip install agentic-memory[all]         # All providers
+pip install agentic-brain[anthropic]   # Claude
+pip install agentic-brain[openai]      # GPT
+pip install agentic-brain[ollama]      # Local models
+pip install agentic-brain[all]         # All providers
 ```
 
 ## Quick Start

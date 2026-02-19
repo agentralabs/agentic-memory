@@ -36,7 +36,7 @@ The `AnthropicProvider` connects AgenticMemory to Claude models for automatic me
 ### Setup
 
 ```bash
-pip install agentic-memory anthropic
+pip install agentic-brain anthropic
 ```
 
 ### Basic Usage
@@ -92,7 +92,7 @@ The `OpenAIProvider` works with GPT-4o, GPT-4, and other OpenAI models.
 ### Setup
 
 ```bash
-pip install agentic-memory openai
+pip install agentic-brain openai
 ```
 
 ### Usage
@@ -141,7 +141,7 @@ ollama serve
 ```
 
 ```bash
-pip install agentic-memory
+pip install agentic-brain
 ```
 
 ### Usage
@@ -180,7 +180,7 @@ AgenticMemory can be used as a memory backend for LangChain chains and agents vi
 ### Setup
 
 ```bash
-pip install agentic-memory langchain langchain-anthropic
+pip install agentic-brain langchain langchain-anthropic
 ```
 
 ### As a LangChain Memory Backend
@@ -238,7 +238,7 @@ AgenticMemory can serve as persistent memory for CrewAI agents.
 ### Setup
 
 ```bash
-pip install agentic-memory crewai
+pip install agentic-brain crewai
 ```
 
 ### Usage

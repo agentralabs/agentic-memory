@@ -15,7 +15,7 @@
 set -euo pipefail
 
 echo "=== Step 1: Install the agentic-memory Python package ==="
-pip install agentic-memory
+pip install agentic-brain
 
 echo ""
 echo "=== Step 2: Run the auto-installer (downloads platform binary) ==="

@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agentic-memory"
+name = "agentic-brain"
 version = "0.1.0"
 description = "Portable binary graph memory for AI agents"
 readme = "README.md"

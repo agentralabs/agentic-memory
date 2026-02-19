@@ -16,7 +16,7 @@ All notable changes to AgenticMemory will be documented in this file.
   - MCP (Model Context Protocol) server for IDE integration
   - 96 tests passing
 
-- **Python SDK** (`pip install agentic-memory`)
+- **Python SDK** (`pip install agentic-brain`)
   - `Brain` class wrapping the Rust CLI with full API
   - `MemoryAgent` for LLM-powered agents with persistent memory
   - Provider integrations: Anthropic Claude, OpenAI GPT, Ollama

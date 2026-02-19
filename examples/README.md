@@ -5,7 +5,7 @@ Runnable examples demonstrating the AgenticMemory Python SDK.
 ## Prerequisites
 
 ```bash
-pip install agentic-memory
+pip install agentic-brain
 amem-install --auto --yes
 ```
 

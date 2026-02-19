@@ -1,6 +1,6 @@
 # Python API Reference
 
-Complete reference for the `agentic_memory` Python package. Install with `pip install agentic-memory`.
+Complete reference for the `agentic_memory` Python package. Install with `pip install agentic-brain`.
 
 ## Brain
 
