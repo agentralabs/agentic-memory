@@ -59,13 +59,26 @@ class MemoryAgent:
         system_prompt: str | None = None,
         max_context_tokens: int = 2000,
         extract_events: bool = True,
+        verbose: bool = False,
     ) -> None:
         self._brain = brain
         self._provider = provider
         self._system_prompt = system_prompt or _DEFAULT_SYSTEM_PROMPT
         self._max_context_tokens = max_context_tokens
         self._extract_events = extract_events
+        self._verbose = verbose
         self._last_extraction: ExtractionResult | None = None
+
+        if self._verbose:
+            # Ensure the agentic_memory logger shows INFO messages
+            pkg_logger = logging.getLogger("agentic_memory")
+            if not pkg_logger.handlers:
+                handler = logging.StreamHandler()
+                handler.setFormatter(logging.Formatter(
+                    "\033[36m[memory]\033[0m %(message)s"
+                ))
+                pkg_logger.addHandler(handler)
+            pkg_logger.setLevel(logging.INFO)
 
     def chat(
         self,
@@ -100,6 +113,13 @@ class MemoryAgent:
             user_message=message,
             max_tokens=self._max_context_tokens,
         )
+
+        if memory_context:
+            # Count lines as a rough proxy for memory items retrieved
+            mem_lines = [l for l in memory_context.splitlines() if l.strip().startswith("-")]
+            logger.info("Retrieved %d memories for this query", len(mem_lines))
+        else:
+            logger.info("No prior memories found (new brain or no matches)")
 
         # Step 2: Build system prompt
         system_parts = [self._system_prompt]
@@ -157,6 +177,16 @@ class MemoryAgent:
                 existing_memories=existing_memories,
             )
             self._last_extraction = result
+
+            # Log what was extracted
+            if result.events or result.corrections:
+                type_counts: dict[str, int] = {}
+                for ev in result.events:
+                    type_counts[ev.type] = type_counts.get(ev.type, 0) + 1
+                parts = [f"{c} {t}{'s' if c > 1 else ''}" for t, c in type_counts.items()]
+                if result.corrections:
+                    parts.append(f"{len(result.corrections)} correction{'s' if len(result.corrections) > 1 else ''}")
+                logger.info("Extracted and saved: %s", ", ".join(parts))
 
             # Store extracted events
             for event in result.events:

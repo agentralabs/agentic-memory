@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="#install"><img src="https://img.shields.io/badge/pip_install-agentic--memory-3B82F6?style=for-the-badge&logo=python&logoColor=white" alt="pip install"></a>
+  <a href="#install"><img src="https://img.shields.io/badge/pip_install-agentic--brain-3B82F6?style=for-the-badge&logo=python&logoColor=white" alt="pip install"></a>
   <a href="#install"><img src="https://img.shields.io/badge/cargo_install-amem-F59E0B?style=for-the-badge&logo=rust&logoColor=white" alt="cargo install"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge" alt="MIT License"></a>
   <a href="paper/agenticmemory-paper.pdf"><img src="https://img.shields.io/badge/Research-Paper_I-8B5CF6?style=for-the-badge" alt="Research Paper I"></a>
@@ -190,25 +190,28 @@ report = brain.drift("preferred language")
 
 **Python** (recommended):
 ```bash
-pip install agentic-memory
+pip install agentic-brain
 ```
+
+> **Note:** The Python SDK requires the `amem` Rust binary. Install it via `cargo install amem` below, or see [INSTALL.md](INSTALL.md) for alternatives.
 
 **With LLM providers:**
 ```bash
-pip install agentic-memory[anthropic]   # Claude
-pip install agentic-memory[openai]      # GPT
-pip install agentic-memory[ollama]      # Local models
-pip install agentic-memory[all]         # Everything
+pip install agentic-brain[anthropic]   # Claude
+pip install agentic-brain[openai]      # GPT
+pip install agentic-brain[ollama]      # Local models
+pip install agentic-brain[all]         # Everything
 ```
 
-**Rust CLI:**
+**Rust CLI** (required for Python SDK):
 ```bash
 cargo install amem
 ```
 
 **One-command auto-install** (connects all AI tools on your machine):
 ```bash
-amem install --auto
+pip install amem-installer
+amem-install install --auto
 ```
 
 Detects Claude Code, Cursor, Windsurf, Continue, Ollama -- configures them all to share one brain. [Details ->](INSTALL.md)

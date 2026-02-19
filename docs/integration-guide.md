@@ -43,7 +43,7 @@ pip install agentic-brain anthropic
 
 ```python
 from agentic_memory import Brain, MemoryAgent
-from agentic_memory.providers import AnthropicProvider
+from agentic_memory.integrations import AnthropicProvider
 
 brain = Brain("claude_assistant.amem")
 provider = AnthropicProvider(
@@ -99,7 +99,7 @@ pip install agentic-brain openai
 
 ```python
 from agentic_memory import Brain, MemoryAgent
-from agentic_memory.providers import OpenAIProvider
+from agentic_memory.integrations import OpenAIProvider
 
 brain = Brain("gpt_assistant.amem")
 provider = OpenAIProvider(
@@ -148,7 +148,7 @@ pip install agentic-brain
 
 ```python
 from agentic_memory import Brain, MemoryAgent
-from agentic_memory.providers import OllamaProvider
+from agentic_memory.integrations import OllamaProvider
 
 brain = Brain("local_assistant.amem")
 provider = OllamaProvider(
@@ -378,7 +378,7 @@ If your LLM is not covered by the built-in providers, implement the `LLMProvider
 ### Required Methods
 
 ```python
-from agentic_memory.providers import LLMProvider, ProviderError
+from agentic_memory.integrations import LLMProvider, ProviderError
 
 class MyProvider(LLMProvider):
 

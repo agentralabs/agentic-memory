@@ -840,7 +840,7 @@ class LLMProvider(ABC):
 ### Implementing a Custom Provider
 
 ```python
-from agentic_memory.providers import LLMProvider, ProviderError
+from agentic_memory.integrations import LLMProvider, ProviderError
 
 class MyCustomProvider(LLMProvider):
 
@@ -877,7 +877,7 @@ agent = MemoryAgent(brain, provider)
 ### AnthropicProvider
 
 ```python
-from agentic_memory.providers import AnthropicProvider
+from agentic_memory.integrations import AnthropicProvider
 
 provider = AnthropicProvider(
     api_key: str = None,             # Defaults to ANTHROPIC_API_KEY env var
@@ -888,7 +888,7 @@ provider = AnthropicProvider(
 ### OpenAIProvider
 
 ```python
-from agentic_memory.providers import OpenAIProvider
+from agentic_memory.integrations import OpenAIProvider
 
 provider = OpenAIProvider(
     api_key: str = None,             # Defaults to OPENAI_API_KEY env var
@@ -899,7 +899,7 @@ provider = OpenAIProvider(
 ### OllamaProvider
 
 ```python
-from agentic_memory.providers import OllamaProvider
+from agentic_memory.integrations import OllamaProvider
 
 provider = OllamaProvider(
     model: str = "llama3.1",

@@ -205,7 +205,7 @@ The `MemoryAgent` class connects a Brain to an LLM, enabling automatic memory ex
 
 ```python
 from agentic_memory import Brain, MemoryAgent
-from agentic_memory.providers import AnthropicProvider
+from agentic_memory.integrations import AnthropicProvider
 
 brain = Brain("assistant.amem")
 provider = AnthropicProvider(api_key="sk-ant-...")
@@ -228,7 +228,7 @@ for event in agent.last_extraction:
 ### With OpenAI
 
 ```python
-from agentic_memory.providers import OpenAIProvider
+from agentic_memory.integrations import OpenAIProvider
 
 provider = OpenAIProvider(api_key="sk-...")
 agent = MemoryAgent(brain, provider)
@@ -237,7 +237,7 @@ agent = MemoryAgent(brain, provider)
 ### With Local Ollama
 
 ```python
-from agentic_memory.providers import OllamaProvider
+from agentic_memory.integrations import OllamaProvider
 
 provider = OllamaProvider(model="llama3.1")  # No API key needed
 agent = MemoryAgent(brain, provider)
