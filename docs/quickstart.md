@@ -15,7 +15,7 @@ Requires Python 3.10 or later. The package includes pre-built binaries for macOS
 ### Rust CLI
 
 ```bash
-cargo install amem
+cargo install agentic-memory
 ```
 
 This installs the `amem` binary. Requires Rust 1.70 or later (tested with 1.90.0).

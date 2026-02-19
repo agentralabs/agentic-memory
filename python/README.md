@@ -75,7 +75,7 @@ response = agent.chat("What do I work on?", session=2)
 ## Requirements
 
 - Python >= 3.10
-- `amem` binary (Rust core engine) -- install via `cargo install amem`
+- `amem` binary (Rust core engine) -- install via `cargo install agentic-memory`
 
 ## Documentation
 

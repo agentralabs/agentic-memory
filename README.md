@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/pip_install-agentic--brain-3B82F6?style=for-the-badge&logo=python&logoColor=white" alt="pip install"></a>
-  <a href="#install"><img src="https://img.shields.io/badge/cargo_install-amem-F59E0B?style=for-the-badge&logo=rust&logoColor=white" alt="cargo install"></a>
+  <a href="#install"><img src="https://img.shields.io/badge/cargo_install-agentic--memory-F59E0B?style=for-the-badge&logo=rust&logoColor=white" alt="cargo install"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge" alt="MIT License"></a>
   <a href="paper/agenticmemory-paper.pdf"><img src="https://img.shields.io/badge/Research-Paper_I-8B5CF6?style=for-the-badge" alt="Research Paper I"></a>
   <a href="paper/agenticmemory-query-expansion.pdf"><img src="https://img.shields.io/badge/Research-Paper_II-8B5CF6?style=for-the-badge" alt="Research Paper II"></a>
@@ -193,7 +193,7 @@ report = brain.drift("preferred language")
 pip install agentic-brain
 ```
 
-> **Note:** The Python SDK requires the `amem` Rust binary. Install it via `cargo install amem` below, or see [INSTALL.md](INSTALL.md) for alternatives.
+> **Note:** The Python SDK requires the `amem` Rust binary. Install it via `cargo install agentic-memory` below, or see [INSTALL.md](INSTALL.md) for alternatives.
 
 **With LLM providers:**
 ```bash
@@ -205,7 +205,7 @@ pip install agentic-brain[all]         # Everything
 
 **Rust CLI** (required for Python SDK):
 ```bash
-cargo install amem
+cargo install agentic-memory
 ```
 
 **One-command auto-install** (connects all AI tools on your machine):
