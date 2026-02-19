@@ -42,3 +42,7 @@ python examples/05_agent_chat.py
 # Install flow
 bash examples/06_one_command_install.sh
 ```
+
+## MCP Server
+
+For MCP-based integration (Claude Desktop, VS Code, Cursor, Windsurf), see the [MCP server README](../crates/agentic-memory-mcp/README.md). Example configuration files for MCP clients are in [`crates/agentic-memory-mcp/examples/`](../crates/agentic-memory-mcp/examples/).

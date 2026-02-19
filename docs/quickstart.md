@@ -258,6 +258,47 @@ for session in info.sessions:
     print(f"  Session {s.id}: {s.node_count} events, {s.edge_count} edges")
 ```
 
+## MCP Server (for Claude Desktop, VS Code, Cursor)
+
+The MCP server gives any MCP-compatible LLM client access to the full AgenticMemory engine — 12 tools, 6 resources, and 4 prompts over JSON-RPC 2.0.
+
+### Install
+
+```bash
+cargo install agentic-memory-mcp
+```
+
+### Configure Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "agentic-memory": {
+      "command": "agentic-memory-mcp",
+      "args": ["serve", "--memory", "~/brain.amem"]
+    }
+  }
+}
+```
+
+### Test It
+
+Restart Claude Desktop and ask:
+
+> "Remember that this project uses Rust with the Tokio async runtime."
+
+Claude will call `memory_add` to store the fact. Later, ask:
+
+> "What do you remember about this project's tech stack?"
+
+Claude will call `memory_query` or `memory_similar` to retrieve the stored knowledge.
+
+See the [MCP server README](../crates/agentic-memory-mcp/README.md) for the full tool/resource/prompt reference.
+
+---
+
 ## Next Steps
 
 - **[Core Concepts](concepts.md)** -- Understand the cognitive event model, edge semantics, and memory formation pipeline.

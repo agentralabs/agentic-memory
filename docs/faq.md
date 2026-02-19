@@ -31,11 +31,11 @@ Most likely yes. AgenticMemory is designed to be framework-agnostic.
 - Ollama -- `OllamaProvider` built in.
 - LangChain -- wrapper integration available.
 - CrewAI -- tool integration available.
-- Claude Code, Cursor, Windsurf -- MCP server integration.
+- Claude Desktop, Claude Code, VS Code, Cursor, Windsurf -- MCP server integration via `agentic-memory-mcp`.
 
 **Easy to integrate with:**
 - AutoGen, Agency Swarm, Semantic Kernel, Haystack, LlamaIndex, or any Python-based agent framework. Use the `Brain` class directly or implement a thin adapter.
-- Any system that supports MCP (Model Context Protocol) -- run `amem mcp-serve` and connect.
+- Any system that supports MCP (Model Context Protocol) -- install `agentic-memory-mcp` (`cargo install agentic-memory-mcp`) and connect via stdio.
 
 **Building a custom integration:**
 If your framework is not listed, you have two options:
@@ -84,7 +84,7 @@ agent_b = MemoryAgent(brain, provider_b)
 **Different processes:** Not simultaneously to the same file. The `.amem` format is single-writer. Options for multi-process scenarios:
 
 1. **Separate files, merge later.** Each agent writes to its own brain file. Periodically merge them.
-2. **MCP server.** Run `amem mcp-serve` as a single-writer gateway. Multiple agents connect as MCP clients, and the server serializes writes.
+2. **MCP server.** Run `agentic-memory-mcp serve` as a single-writer gateway. Multiple agents connect as MCP clients, and the server serializes writes.
 3. **Write lock.** Use OS-level file locking (e.g., `flock`) to ensure only one process writes at a time.
 
 ## How do I back up my brain?
@@ -121,7 +121,7 @@ Yes. AgenticMemory supports Windows (x86_64) with the following notes:
 **Known differences:**
 - File paths use backslashes. The SDK handles path normalization, but if you pass paths to the CLI, use Windows-style paths or forward slashes (both work).
 - Memory-mapped file size may be limited by the virtual address space on 32-bit Windows. Use 64-bit Windows for brain files larger than ~1 GB.
-- The MCP server (`amem mcp-serve`) works on Windows but requires port configuration if the default port is in use.
+- The MCP server (`agentic-memory-mcp serve`) works on Windows but requires port configuration if the default port is in use.
 
 The CI pipeline runs the full test suite (440 tests) on Windows, macOS, and Linux for every release.
 
@@ -174,7 +174,7 @@ The LLM is only needed for:
 
 If your application has structured input (API responses, database records, sensor data), you likely do not need an LLM at all. Store events directly and build your own extraction logic.
 
-The `amem` CLI also works entirely without an LLM for all commands except `mcp-serve` (which does not use an LLM itself -- it just exposes the brain as tools for an external LLM).
+The `amem` CLI also works entirely without an LLM. The separate MCP server (`agentic-memory-mcp`) does not use an LLM itself -- it just exposes the brain as tools for an external LLM client.
 
 ## What about privacy and security?
 
@@ -193,4 +193,4 @@ The `amem` CLI also works entirely without an LLM for all commands except `mcp-s
 - Implementing a sanitization step before storage.
 - Periodically auditing brain contents with `amem query`.
 
-**MCP server.** When running `amem mcp-serve`, the server binds to `127.0.0.1` by default (localhost only). It does not expose the brain to the network. If you need remote access, use an SSH tunnel or VPN rather than binding to `0.0.0.0`.
+**MCP server.** When running `agentic-memory-mcp serve`, the server binds to `127.0.0.1` by default (localhost only). It does not expose the brain to the network. If you need remote access, use an SSH tunnel or VPN rather than binding to `0.0.0.0`.

@@ -14,20 +14,32 @@ Thank you for your interest in contributing to AgenticMemory! This document prov
 
 ## Development Setup
 
-### Rust Core
+This is a Cargo workspace monorepo. All Rust crates are under `crates/`.
+
+### Rust Workspace
 
 ```bash
-# Build
+# Build everything (core + MCP server)
 cargo build
 
-# Run tests
-cargo test
+# Run all tests (core + MCP + bridge)
+cargo test --workspace
 
-# Run benchmarks
-cargo bench
+# Core library only
+cargo test -p agentic-memory
+cargo bench -p agentic-memory
 
-# Run the CLI
-cargo run -- create test.amem
+# MCP server only
+cargo test -p agentic-memory-mcp
+
+# Bridge integration tests
+cargo test -p agentic-memory-bridge-tests
+
+# Run the core CLI
+cargo run -p agentic-memory -- create test.amem
+
+# Run the MCP server
+cargo run -p agentic-memory-mcp -- serve --memory test.amem
 ```
 
 ### Python SDK
@@ -67,6 +79,13 @@ File an issue with:
 3. Add tests in `python/tests/`
 4. Update `docs/integration-guide.md`
 
+### Add an MCP Tool
+
+1. Create a new tool handler in `crates/agentic-memory-mcp/src/tools/`
+2. Register it in `crates/agentic-memory-mcp/src/tools/registry.rs`
+3. Add tests in `crates/agentic-memory-mcp/tests/`
+4. Update `crates/agentic-memory-mcp/README.md`
+
 ### Write Examples
 
 1. Add a new example in `examples/`
@@ -82,7 +101,7 @@ All docs are in `docs/`. Fix typos, add examples, clarify explanations — all w
 
 - **Rust**: Follow standard Rust conventions. Run `cargo clippy` and `cargo fmt`.
 - **Python**: Follow PEP 8. Use type hints. Run `mypy` for type checking.
-- **Tests**: Every feature needs tests. We maintain 440+ tests across the stack (179 Rust, 104 Python SDK, 97 agent, 21 cross-provider, 39 installer).
+- **Tests**: Every feature needs tests. We maintain 575+ tests across the stack (179 Rust core, 135 MCP server + bridge, 104 Python SDK, 97 agent, 21 cross-provider, 39 installer).
 - **Documentation**: Update docs when changing public APIs.
 
 ## Commit Messages

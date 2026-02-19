@@ -90,7 +90,57 @@ All commands support `--json` output for programmatic consumption.
 
 ---
 
-## 3. Auto-Installer (connects all your AI tools)
+## 3. MCP Server (for Claude Desktop, VS Code, Cursor, Windsurf)
+
+The MCP server exposes a brain as 12 tools, 6 resources, and 4 prompts to any MCP-compatible LLM client.
+
+```bash
+cargo install agentic-memory-mcp
+```
+
+### Configure Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "agentic-memory": {
+      "command": "agentic-memory-mcp",
+      "args": ["serve", "--memory", "~/brain.amem"]
+    }
+  }
+}
+```
+
+### Configure VS Code / Cursor
+
+Add to `.vscode/settings.json`:
+
+```json
+{
+  "mcp.servers": {
+    "agentic-memory": {
+      "command": "agentic-memory-mcp",
+      "args": ["serve", "--memory", "${workspaceFolder}/.memory/project.amem"]
+    }
+  }
+}
+```
+
+### Verify
+
+Once connected, the LLM gains access to tools like `memory_add`, `memory_query`, `memory_traverse`, `memory_correct`, `memory_resolve`, `memory_similar`, and more. Test by asking the LLM to store a fact:
+
+> "Remember that this project uses PostgreSQL 16."
+
+The LLM should call `memory_add` and confirm the event was stored.
+
+See the [MCP server README](crates/agentic-memory-mcp/README.md) for the full tool/resource/prompt reference.
+
+---
+
+## 4. Auto-Installer (connects all your AI tools)
 
 The auto-installer scans your machine for AI tools and connects them all to a shared AgenticMemory brain file.
 
@@ -175,9 +225,14 @@ All 5 tools now share persistent memory.
 git clone https://github.com/agentic-revolution/agentic-memory.git
 cd agentic-memory
 
-# Build Rust core + CLI
+# Build entire workspace (core library + MCP server)
 cargo build --release
-cargo install --path .
+
+# Install core CLI
+cargo install --path crates/agentic-memory
+
+# Install MCP server
+cargo install --path crates/agentic-memory-mcp
 
 # Install Python SDK (development mode)
 cd python
@@ -191,8 +246,17 @@ pip install -e ".[dev]"
 ### Run tests
 
 ```bash
-# Rust tests (179 tests)
-cargo test
+# All workspace tests (core + MCP + bridge: 314 tests)
+cargo test --workspace
+
+# Core library only (179 tests)
+cargo test -p agentic-memory
+
+# MCP server only (119 tests)
+cargo test -p agentic-memory-mcp
+
+# Bridge integration tests (16 tests)
+cargo test -p agentic-memory-bridge-tests
 
 # Python SDK tests (104 tests)
 cd python && pytest tests/ -v
@@ -208,6 +272,7 @@ cd ../installer && pytest tests/ -v
 | Package | Registry | Install |
 |:---|:---|:---|
 | **agentic-memory** | [crates.io](https://crates.io/crates/agentic-memory) | `cargo install agentic-memory` |
+| **agentic-memory-mcp** | [crates.io](https://crates.io/crates/agentic-memory-mcp) | `cargo install agentic-memory-mcp` |
 | **agentic-brain** | [PyPI](https://pypi.org/project/agentic-brain/) | `pip install agentic-brain` |
 | **amem-installer** | [PyPI](https://pypi.org/project/amem-installer/) | `pip install amem-installer` |
 

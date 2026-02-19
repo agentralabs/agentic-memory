@@ -5,13 +5,15 @@
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/pip_install-agentic--brain-3B82F6?style=for-the-badge&logo=python&logoColor=white" alt="pip install"></a>
   <a href="#install"><img src="https://img.shields.io/badge/cargo_install-agentic--memory-F59E0B?style=for-the-badge&logo=rust&logoColor=white" alt="cargo install"></a>
+  <a href="#mcp-server"><img src="https://img.shields.io/badge/MCP_Server-agentic--memory--mcp-10B981?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiPjxwYXRoIGQ9Ik0xMiAydjIwTTIgMTJoMjAiLz48L3N2Zz4=&logoColor=white" alt="MCP Server"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge" alt="MIT License"></a>
-  <a href="paper/agenticmemory-paper.pdf"><img src="https://img.shields.io/badge/Research-Paper_I-8B5CF6?style=for-the-badge" alt="Research Paper I"></a>
-  <a href="paper/agenticmemory-query-expansion.pdf"><img src="https://img.shields.io/badge/Research-Paper_II-8B5CF6?style=for-the-badge" alt="Research Paper II"></a>
+  <a href="paper/paper-i-format/agenticmemory-paper.pdf"><img src="https://img.shields.io/badge/Research-Paper_I-8B5CF6?style=for-the-badge" alt="Research Paper I"></a>
+  <a href="paper/paper-ii-query-expansion/agenticmemory-query-expansion.pdf"><img src="https://img.shields.io/badge/Research-Paper_II-8B5CF6?style=for-the-badge" alt="Research Paper II"></a>
+  <a href="paper/paper-iii-mcp-server/agentic-memory-mcp-paper.pdf"><img src="https://img.shields.io/badge/Research-Paper_III-8B5CF6?style=for-the-badge" alt="Research Paper III"></a>
 </p>
 
 <p align="center">
-  <a href="#quickstart">Quickstart</a> · <a href="#why-agentic-memory">Why</a> · <a href="#benchmarks">Benchmarks</a> · <a href="#the-query-engine">Query Engine</a> · <a href="#install">Install</a> · <a href="docs/api-reference.md">API</a> · <a href="paper/agenticmemory-paper.pdf">Paper</a>
+  <a href="#quickstart">Quickstart</a> · <a href="#why-agentic-memory">Why</a> · <a href="#mcp-server">MCP Server</a> · <a href="#benchmarks">Benchmarks</a> · <a href="#the-query-engine">Query Engine</a> · <a href="#install">Install</a> · <a href="docs/api-reference.md">API</a> · <a href="paper/paper-i-format/agenticmemory-paper.pdf">Papers</a>
 </p>
 
 ---
@@ -222,6 +224,58 @@ Detects Claude Code, Cursor, Windsurf, Continue, Ollama -- configures them all t
 
 ---
 
+<a name="mcp-server"></a>
+
+## MCP Server
+
+**Any MCP-compatible client gets instant access to persistent graph memory.** The `agentic-memory-mcp` crate exposes the full AgenticMemory engine over the [Model Context Protocol](https://modelcontextprotocol.io) (JSON-RPC 2.0 over stdio).
+
+```bash
+cargo install agentic-memory-mcp
+```
+
+### Configure Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "agentic-memory": {
+      "command": "agentic-memory-mcp",
+      "args": ["serve", "--memory", "~/brain.amem"]
+    }
+  }
+}
+```
+
+### Configure VS Code / Cursor
+
+Add to `.vscode/settings.json`:
+
+```json
+{
+  "mcp.servers": {
+    "agentic-memory": {
+      "command": "agentic-memory-mcp",
+      "args": ["serve", "--memory", "${workspaceFolder}/.memory/project.amem"]
+    }
+  }
+}
+```
+
+### What the LLM gets
+
+| Category | Count | Examples |
+|:---|---:|:---|
+| **Tools** | 12 | `memory_add`, `memory_query`, `memory_traverse`, `memory_correct`, `memory_resolve`, `memory_similar`, `memory_causal`, `session_start` ... |
+| **Resources** | 6 | `amem://node/{id}`, `amem://session/{id}`, `amem://graph/stats` ... |
+| **Prompts** | 4 | `remember`, `reflect`, `correct`, `summarize` |
+
+Once connected, the LLM can store facts, traverse reasoning chains, correct beliefs, run causal impact analysis, and maintain session continuity -- all backed by the same `.amem` binary graph. [Full MCP docs ->](crates/agentic-memory-mcp/README.md)
+
+---
+
 <a name="quickstart"></a>
 
 ## Quickstart
@@ -361,17 +415,19 @@ This isn't a prototype. It's tested beyond what most production systems require.
 | Suite | Tests | |
 |:---|---:|:---|
 | Rust core engine | **179** | 13 criterion benchmarks |
+| MCP server + bridge | **135** | Protocol, tools, resources, prompts, sessions, edge cases, integration bridge |
 | Python SDK | **104** | 8 test modules, query expansion coverage |
 | Terminal agent | **97** | 6 validation protocols |
 | Cross-provider | **21** | Claude <-> GPT <-> Ollama |
 | Auto-installer | **39** | Sandboxed config tests |
-| **Total** | **440** | All passing |
+| **Total** | **575** | All passing |
 
 Cross-provider tests prove: facts, decisions, corrections, skills, and reasoning chains transfer perfectly between Claude, GPT-4o, and Ollama (including models as small as 1B parameters). Cross-version tests prove: v0.1 files load in v0.2, v0.2 files load in v0.1 (unknown indexes gracefully skipped).
 
-**Two research papers:**
-- [Paper I: AgenticMemory format + v0.1 (7 pages, 7 figures, 6 tables)](paper/agenticmemory-paper.pdf)
-- [Paper II: Query Expansion -- 9 new query types (10 pages, 9 figures, 6 tables, real Criterion data)](paper/agenticmemory-query-expansion.pdf)
+**Three research papers:**
+- [Paper I: AgenticMemory format + v0.1 (7 pages, 7 figures, 6 tables)](paper/paper-i-format/agenticmemory-paper.pdf)
+- [Paper II: Query Expansion -- 9 new query types (10 pages, 9 figures, 6 tables, real Criterion data)](paper/paper-ii-query-expansion/agenticmemory-query-expansion.pdf)
+- [Paper III: MCP Server -- universal LLM access via Model Context Protocol](paper/paper-iii-mcp-server/agentic-memory-mcp-paper.pdf)
 
 ---
 
@@ -383,13 +439,15 @@ This is a Cargo workspace monorepo containing the core library, MCP server, and 
 agentic-memory/
 ├── Cargo.toml                    # Workspace root
 ├── crates/
-│   ├── agentic-memory/           # Core library: binary graph format
-│   └── agentic-memory-mcp/       # MCP server: protocol bridge
+│   ├── agentic-memory/           # Core library (crates.io: agentic-memory v0.2.0)
+│   └── agentic-memory-mcp/       # MCP server (crates.io: agentic-memory-mcp v0.1.0)
 ├── tests/bridge/                 # Integration tests (core ↔ MCP)
+├── python/                       # Python SDK (PyPI: agentic-brain)
+├── agent/                        # Terminal test agent
+├── installer/                    # Auto-installer (PyPI: amem-installer)
 ├── examples/                     # Python + Rust usage examples
-├── scripts/                      # Claude test + publish scripts
-├── paper/                        # Research papers
-└── docs/                         # API reference + specs
+├── paper/                        # Research papers (I, II, III)
+└── docs/                         # Quickstart, API ref, concepts, benchmarks
 ```
 
 ### Running Tests

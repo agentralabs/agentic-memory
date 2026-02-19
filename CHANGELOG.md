@@ -2,9 +2,22 @@
 
 All notable changes to AgenticMemory will be documented in this file.
 
-## [0.2.0] - 2026-02-18
+## [0.2.0] - 2026-02-19
 
 ### Added
+
+- **MCP Server (`agentic-memory-mcp` v0.1.0)**
+  - 12 MCP tools: `memory_add`, `memory_query`, `memory_traverse`, `memory_correct`, `memory_resolve`, `memory_context`, `memory_similar`, `memory_causal`, `memory_temporal`, `memory_stats`, `session_start`, `session_end`
+  - 6 resources via `amem://` URIs (node, session, type index, stats, recent, important)
+  - 4 prompt templates: remember, reflect, correct, summarize
+  - Stdio transport (default) + optional SSE transport (`--features sse`)
+  - Session management with auto-save
+  - Confidence validation at MCP layer (0.0-1.0 range enforcement)
+  - Published to crates.io: `cargo install agentic-memory-mcp`
+
+- **Monorepo restructure**
+  - Cargo workspace with `crates/agentic-memory/` (core) and `crates/agentic-memory-mcp/` (MCP server)
+  - Integration bridge tests in `tests/bridge/` (basic, multiagent, concurrent, stress)
 
 - **Query Expansion: 9 new query types (queries 8-16)**
   - BM25 text search with inverted index (fast path) and full-scan fallback (slow path)
@@ -38,8 +51,10 @@ All notable changes to AgenticMemory will be documented in this file.
 ### Test coverage
 
 - Rust core: 179 tests (83 new for v0.2 query methods)
+- MCP server: 119 tests (types, protocol, tools, resources, prompts, sessions, streaming, integration, edge cases)
+- Bridge integration: 16 tests (basic, multiagent, concurrent, stress)
 - Python SDK: 104 tests (20 new for v0.2 query wrappers)
-- Total across all suites: 440 tests
+- Total across all suites: 575 tests
 
 ### No new dependencies
 

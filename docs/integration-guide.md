@@ -272,90 +272,88 @@ print(f"Stored {brain.info().node_count} events")
 
 ---
 
-## Claude Code (MCP Server)
+## MCP Server (Claude Desktop, Claude Code, VS Code, Cursor, Windsurf)
 
-AgenticMemory includes an MCP (Model Context Protocol) server that exposes a brain as tools for Claude Code.
+The `agentic-memory-mcp` crate is a dedicated MCP server that exposes the full AgenticMemory engine over the [Model Context Protocol](https://modelcontextprotocol.io) (JSON-RPC 2.0). It provides 12 tools, 6 resources, and 4 prompt templates to any MCP-compatible client.
 
-### Start the MCP Server
+### Install
 
 ```bash
-amem mcp-serve project.amem --port 3100
-```
-
-### Configure Claude Code
-
-Add to your Claude Code MCP configuration (typically `~/.claude/mcp.json`):
-
-```json
-{
-  "mcpServers": {
-    "memory": {
-      "command": "amem",
-      "args": ["mcp-serve", "/path/to/project.amem", "--port", "3100"]
-    }
-  }
-}
+cargo install agentic-memory-mcp
 ```
 
 ### Available MCP Tools
 
-Once connected, Claude Code gains access to these tools:
-
 | Tool | Description |
 |------|-------------|
-| `memory_add_fact` | Store a new fact. |
-| `memory_add_decision` | Store a decision. |
-| `memory_add_inference` | Store an inference. |
-| `memory_search` | Search memories by semantic similarity. |
-| `memory_recall` | Retrieve events by type, session, or ID. |
-| `memory_link` | Create edges between events. |
-| `memory_info` | Get brain statistics. |
+| `memory_add` | Add a cognitive event (fact, decision, inference, correction, skill, episode) |
+| `memory_query` | Pattern query for matching nodes |
+| `memory_traverse` | Walk graph following typed edges |
+| `memory_correct` | Record a correction to a past belief |
+| `memory_resolve` | Follow supersedes chain to current truth |
+| `memory_context` | Get subgraph around a node |
+| `memory_similar` | Vector similarity search |
+| `memory_causal` | Causal impact analysis |
+| `memory_temporal` | Compare knowledge across time periods |
+| `memory_stats` | Graph statistics |
+| `session_start` | Begin a new interaction session |
+| `session_end` | End session and create episode summary |
 
-Claude Code will automatically use these tools during conversations to remember context, recall prior decisions, and maintain continuity across sessions.
+### Configure Claude Desktop
 
----
-
-## Cursor / Windsurf (MCP Config)
-
-### Cursor
-
-Add to your Cursor MCP settings (Settings > MCP):
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "agentic-memory": {
-      "command": "amem",
-      "args": ["mcp-serve", "/path/to/project.amem"],
-      "env": {}
+      "command": "agentic-memory-mcp",
+      "args": ["serve", "--memory", "/path/to/brain.amem"]
     }
   }
 }
 ```
 
-Alternatively, create a `.cursor/mcp.json` file in your project root:
+### Configure Claude Code
+
+Add to `~/.claude/mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "agentic-memory": {
-      "command": "amem",
-      "args": ["mcp-serve", "./project.amem"]
+      "command": "agentic-memory-mcp",
+      "args": ["serve", "--memory", "/path/to/brain.amem"]
     }
   }
 }
 ```
 
-### Windsurf
+### Configure VS Code / Cursor
 
-Add to your Windsurf MCP configuration (`~/.windsurf/mcp.json` or project-level `.windsurf/mcp.json`):
+Add to `.vscode/settings.json`:
+
+```json
+{
+  "mcp.servers": {
+    "agentic-memory": {
+      "command": "agentic-memory-mcp",
+      "args": ["serve", "--memory", "${workspaceFolder}/.memory/project.amem"]
+    }
+  }
+}
+```
+
+### Configure Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
 
 ```json
 {
   "mcpServers": {
     "agentic-memory": {
-      "command": "amem",
-      "args": ["mcp-serve", "/path/to/project.amem"]
+      "command": "agentic-memory-mcp",
+      "args": ["serve", "--memory", "/path/to/brain.amem"]
     }
   }
 }
@@ -367,7 +365,9 @@ After configuring, restart your editor. You should see the memory tools availabl
 
 > "Remember that this project uses PostgreSQL 16 with pgvector for embeddings."
 
-The assistant should call `memory_add_fact` and confirm the event was stored.
+The assistant should call `memory_add` and confirm the event was stored.
+
+See the [MCP server README](../crates/agentic-memory-mcp/README.md) for the full reference including resources, prompts, and CLI commands.
 
 ---
 

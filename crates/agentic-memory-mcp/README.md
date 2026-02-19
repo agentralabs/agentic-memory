@@ -30,7 +30,13 @@ AgenticMemory MCP Server bridges **any MCP-compatible LLM client** (Claude, GPT,
 
 ## Quick Start
 
-### Build
+### Install from crates.io
+
+```bash
+cargo install agentic-memory-mcp
+```
+
+### Or build from source
 
 ```bash
 cargo build --release
@@ -66,6 +72,21 @@ Add to your Claude Desktop MCP config (`~/Library/Application Support/Claude/cla
 }
 ```
 
+### Claude Code
+
+Add to `~/.claude/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "agentic-memory": {
+      "command": "agentic-memory-mcp",
+      "args": ["serve", "--memory", "/path/to/brain.amem"]
+    }
+  }
+}
+```
+
 ### VS Code / Cursor
 
 Add to `.vscode/settings.json`:
@@ -76,6 +97,21 @@ Add to `.vscode/settings.json`:
     "agentic-memory": {
       "command": "agentic-memory-mcp",
       "args": ["serve", "--memory", "${workspaceFolder}/.memory/project.amem"]
+    }
+  }
+}
+```
+
+### Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "agentic-memory": {
+      "command": "agentic-memory-mcp",
+      "args": ["serve", "--memory", "/path/to/brain.amem"]
     }
   }
 }
@@ -155,15 +191,21 @@ agentic-memory-mcp info
 
 ## Development
 
+This crate is part of the [AgenticMemory](../../README.md) Cargo workspace.
+
 ```bash
-# Run tests
-cargo test
+# Run MCP server tests (from workspace root)
+cargo test -p agentic-memory-mcp
 
-# Run clippy
-cargo clippy
+# Run bridge integration tests
+cargo test -p agentic-memory-bridge-tests
 
-# Format code
-cargo fmt
+# Run all workspace tests
+cargo test --workspace
+
+# Clippy + format
+cargo clippy --workspace
+cargo fmt --all
 
 # Build release
 cargo build --release
