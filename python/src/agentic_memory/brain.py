@@ -43,6 +43,24 @@ from agentic_memory.models import (
     parse_session_info,
     parse_traversal,
 )
+from agentic_memory.results import (
+    Analogy,
+    ConsolidationReport,
+    DriftReport,
+    GapReport,
+    HybridMatch,
+    PathResult,
+    RevisionReport,
+    TextMatch,
+    parse_analogy,
+    parse_consolidation_report,
+    parse_drift_report,
+    parse_gap_report,
+    parse_hybrid_match,
+    parse_path_result,
+    parse_revision_report,
+    parse_text_match,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -609,6 +627,481 @@ class Brain:
         if isinstance(data, dict):
             return data
         return {}
+
+    # ================================================================
+    # ADVANCED QUERIES — Text search, hybrid search, graph algorithms
+    # ================================================================
+
+    def search_text(
+        self,
+        query: str,
+        types: list[str | EventType] | None = None,
+        sessions: list[int] | None = None,
+        limit: int = 20,
+        min_score: float = 0.0,
+    ) -> list[TextMatch]:
+        """BM25 text search over node contents.
+
+        Full-text search using BM25 relevance scoring. Searches over
+        the content of all nodes and returns ranked matches.
+
+        Args:
+            query: Search query text.
+            types: Filter by event type(s). None = all types.
+            sessions: Filter by session ID(s). None = all sessions.
+            limit: Maximum results (default: 20).
+            min_score: Minimum BM25 score threshold (default: 0.0).
+
+        Returns:
+            List of TextMatch results, sorted by relevance score.
+
+        Example:
+            >>> matches = brain.search_text("Rust programming")
+            >>> for m in matches:
+            ...     print(f"Node {m.node_id}: score={m.score:.3f}")
+        """
+        if not self.exists:
+            raise BrainNotFoundError(str(self._path))
+
+        cmd: list[str] = ["text-search", str(self._path), query]
+
+        if types:
+            type_strs = [str(t.value) if isinstance(t, EventType) else str(t) for t in types]
+            cmd.extend(["--event-types", ",".join(type_strs)])
+        if sessions:
+            cmd.extend(["--session", ",".join(str(s) for s in sessions)])
+        cmd.extend(["--limit", str(limit)])
+        cmd.extend(["--min-score", str(min_score)])
+
+        data = self._cli_json(*cmd)
+
+        results: list[dict] = []  # type: ignore[type-arg]
+        if isinstance(data, list):
+            results = data
+        elif isinstance(data, dict):
+            results = data.get("results", data.get("matches", []))
+
+        return [parse_text_match(r) for r in results]
+
+    def hybrid_search(
+        self,
+        query: str,
+        text_weight: float = 0.5,
+        vec_weight: float = 0.5,
+        limit: int = 20,
+        types: list[str | EventType] | None = None,
+    ) -> list[HybridMatch]:
+        """Combined BM25 + vector search with reciprocal rank fusion.
+
+        Runs both a text search and a vector similarity search, then
+        fuses the results using reciprocal rank fusion (RRF) for
+        high-quality relevance ranking.
+
+        Args:
+            query: Search query text.
+            text_weight: Weight for BM25 text scores (default: 0.5).
+            vec_weight: Weight for vector similarity (default: 0.5).
+            limit: Maximum results (default: 20).
+            types: Filter by event type(s). None = all types.
+
+        Returns:
+            List of HybridMatch results, sorted by combined score.
+
+        Example:
+            >>> matches = brain.hybrid_search("user preferences")
+            >>> for m in matches:
+            ...     print(f"Node {m.node_id}: combined={m.combined_score:.3f}")
+        """
+        if not self.exists:
+            raise BrainNotFoundError(str(self._path))
+
+        cmd: list[str] = ["hybrid-search", str(self._path), query]
+
+        cmd.extend(["--text-weight", str(text_weight)])
+        cmd.extend(["--vec-weight", str(vec_weight)])
+        cmd.extend(["--limit", str(limit)])
+
+        if types:
+            type_strs = [str(t.value) if isinstance(t, EventType) else str(t) for t in types]
+            cmd.extend(["--event-types", ",".join(type_strs)])
+
+        data = self._cli_json(*cmd)
+
+        results: list[dict] = []  # type: ignore[type-arg]
+        if isinstance(data, list):
+            results = data
+        elif isinstance(data, dict):
+            results = data.get("results", data.get("matches", []))
+
+        return [parse_hybrid_match(r) for r in results]
+
+    def centrality(
+        self,
+        algorithm: str = "pagerank",
+        damping: float = 0.85,
+        edge_types: list[str | EdgeType] | None = None,
+        types: list[str | EventType] | None = None,
+        limit: int = 20,
+        iterations: int = 100,
+    ) -> list[dict]:  # type: ignore[type-arg]
+        """Compute node importance scores using centrality algorithms.
+
+        Ranks nodes by their structural importance in the knowledge
+        graph using PageRank, degree centrality, or betweenness
+        centrality.
+
+        Args:
+            algorithm: Algorithm to use -- "pagerank", "degree", or
+                "betweenness" (default: "pagerank").
+            damping: PageRank damping factor (default: 0.85).
+            edge_types: Edge types to consider. None = all types.
+            types: Filter by event type(s). None = all types.
+            limit: Top N results (default: 20).
+            iterations: Max iterations for PageRank (default: 100).
+
+        Returns:
+            List of dicts with "node_id" and "score" keys, sorted
+            by score descending.
+
+        Example:
+            >>> top = brain.centrality(algorithm="pagerank", limit=5)
+            >>> for entry in top:
+            ...     print(f"Node {entry['node_id']}: {entry['score']:.4f}")
+        """
+        if not self.exists:
+            raise BrainNotFoundError(str(self._path))
+
+        cmd: list[str] = ["centrality", str(self._path)]
+
+        cmd.extend(["--algorithm", algorithm])
+        cmd.extend(["--damping", str(damping)])
+        cmd.extend(["--limit", str(limit)])
+        cmd.extend(["--iterations", str(iterations)])
+
+        if edge_types:
+            edge_strs = [str(e.value) if isinstance(e, EdgeType) else str(e) for e in edge_types]
+            cmd.extend(["--edge-types", ",".join(edge_strs)])
+        if types:
+            type_strs = [str(t.value) if isinstance(t, EventType) else str(t) for t in types]
+            cmd.extend(["--event-types", ",".join(type_strs)])
+
+        data = self._cli_json(*cmd)
+
+        results: list[dict] = []  # type: ignore[type-arg]
+        if isinstance(data, list):
+            results = data
+        elif isinstance(data, dict):
+            results = data.get("results", data.get("scores", []))
+
+        return results
+
+    def shortest_path(
+        self,
+        source: int,
+        target: int,
+        edge_types: list[str | EdgeType] | None = None,
+        direction: str = "both",
+        max_depth: int = 20,
+        weighted: bool = False,
+    ) -> PathResult:
+        """Find the shortest path between two nodes.
+
+        Uses BFS (unweighted) or Dijkstra (weighted) to find the
+        shortest path between two nodes in the knowledge graph.
+
+        Args:
+            source: Source node ID.
+            target: Target node ID.
+            edge_types: Edge types to traverse. None = all types.
+            direction: "forward", "backward", or "both" (default: "both").
+            max_depth: Maximum path length (default: 20).
+            weighted: Use edge weights for path cost (default: False).
+
+        Returns:
+            PathResult with the path, edges, cost, and whether a
+            path was found.
+
+        Example:
+            >>> result = brain.shortest_path(0, 42)
+            >>> if result.found:
+            ...     print(f"Path: {result.path} (cost={result.cost})")
+        """
+        if not self.exists:
+            raise BrainNotFoundError(str(self._path))
+
+        cmd: list[str] = ["path", str(self._path), str(source), str(target)]
+
+        if edge_types:
+            edge_strs = [str(e.value) if isinstance(e, EdgeType) else str(e) for e in edge_types]
+            cmd.extend(["--edge-types", ",".join(edge_strs)])
+        cmd.extend(["--direction", direction])
+        cmd.extend(["--max-depth", str(max_depth)])
+        if weighted:
+            cmd.append("--weighted")
+
+        data = self._cli_json(*cmd)
+        if not isinstance(data, dict):
+            data = {"path": [], "edges": [], "cost": 0.0, "found": False}
+        return parse_path_result(data)
+
+    def revise(
+        self,
+        hypothesis: str,
+        threshold: float = 0.6,
+        max_depth: int = 10,
+        confidence: float = 0.9,
+    ) -> RevisionReport:
+        """Belief revision -- counterfactual "what if" analysis.
+
+        Tests what would happen if a new hypothesis were true. Finds
+        existing beliefs that would be contradicted, weakened, or
+        invalidated, and traces the cascade of effects.
+
+        Args:
+            hypothesis: The hypothetical new fact to test.
+            threshold: Contradiction detection threshold (default: 0.6).
+            max_depth: Propagation depth (default: 10).
+            confidence: Confidence of the hypothesis (default: 0.9).
+
+        Returns:
+            RevisionReport with contradicted nodes, weakened nodes,
+            invalidated decisions, and the cascade chain.
+
+        Example:
+            >>> report = brain.revise("User switched from Python to Rust")
+            >>> print(f"Would affect {report.total_affected} nodes")
+        """
+        if not self.exists:
+            raise BrainNotFoundError(str(self._path))
+
+        data = self._cli_json(
+            "revise", str(self._path), hypothesis,
+            "--threshold", str(threshold),
+            "--max-depth", str(max_depth),
+            "--confidence", str(confidence),
+        )
+        if not isinstance(data, dict):
+            data = {}
+        return parse_revision_report(data)
+
+    def gaps(
+        self,
+        threshold: float = 0.5,
+        min_support: int = 1,
+        limit: int = 20,
+        sort: str = "dangerous",
+        session: str | None = None,
+    ) -> GapReport:
+        """Detect reasoning gaps in the knowledge graph.
+
+        Identifies decisions without sufficient supporting evidence,
+        unsupported inferences, isolated nodes, and other structural
+        weaknesses in the reasoning chain.
+
+        Args:
+            threshold: Confidence threshold for gap detection
+                (default: 0.5).
+            min_support: Minimum support edges required for decisions
+                (default: 1).
+            limit: Maximum gaps to report (default: 20).
+            sort: Sort order -- "dangerous", "recent", or "confidence"
+                (default: "dangerous").
+            session: Session range filter as "start:end" (e.g., "1:5").
+                None = all sessions.
+
+        Returns:
+            GapReport with identified gaps, health score, and summary.
+
+        Example:
+            >>> report = brain.gaps(min_support=2)
+            >>> print(f"Health: {report.health_score:.1%}")
+            >>> for gap in report.gaps:
+            ...     print(gap)
+        """
+        if not self.exists:
+            raise BrainNotFoundError(str(self._path))
+
+        cmd: list[str] = ["gaps", str(self._path)]
+
+        cmd.extend(["--threshold", str(threshold)])
+        cmd.extend(["--min-support", str(min_support)])
+        cmd.extend(["--limit", str(limit)])
+        cmd.extend(["--sort", sort])
+
+        if session is not None:
+            cmd.extend(["--session", session])
+
+        data = self._cli_json(*cmd)
+        if not isinstance(data, dict):
+            data = {}
+        return parse_gap_report(data)
+
+    def analogy(
+        self,
+        description: str,
+        limit: int = 5,
+        min_similarity: float = 0.3,
+        exclude_sessions: list[int] | None = None,
+        depth: int = 2,
+    ) -> list[Analogy]:
+        """Find structurally similar past situations (analogies).
+
+        Searches the knowledge graph for subgraph patterns that are
+        structurally and/or textually similar to the described
+        situation. Useful for "have I seen something like this before?"
+
+        Args:
+            description: Text describing the current situation.
+            limit: Maximum analogies to return (default: 5).
+            min_similarity: Minimum structural similarity threshold
+                (default: 0.3).
+            exclude_sessions: Sessions to exclude from results.
+                None = include all.
+            depth: Context depth for subgraph matching (default: 2).
+
+        Returns:
+            List of Analogy results, sorted by combined score.
+
+        Example:
+            >>> analogies = brain.analogy("debugging a memory leak")
+            >>> for a in analogies:
+            ...     print(f"Session {a.sessions}: score={a.combined_score:.3f}")
+        """
+        if not self.exists:
+            raise BrainNotFoundError(str(self._path))
+
+        cmd: list[str] = ["analogy", str(self._path), description]
+
+        cmd.extend(["--limit", str(limit)])
+        cmd.extend(["--min-similarity", str(min_similarity)])
+        cmd.extend(["--depth", str(depth)])
+
+        if exclude_sessions:
+            cmd.extend(["--exclude-session", ",".join(str(s) for s in exclude_sessions)])
+
+        data = self._cli_json(*cmd)
+
+        results: list[dict] = []  # type: ignore[type-arg]
+        if isinstance(data, list):
+            results = data
+        elif isinstance(data, dict):
+            results = data.get("results", data.get("analogies", []))
+
+        return [parse_analogy(r) for r in results]
+
+    def consolidate(
+        self,
+        deduplicate: bool = False,
+        link_contradictions: bool = False,
+        promote_inferences: bool = False,
+        prune: bool = False,
+        compress_episodes: bool = False,
+        all_operations: bool = False,
+        threshold: float = 0.95,
+        confirm: bool = False,
+        backup: str | Path | None = None,
+    ) -> ConsolidationReport:
+        """Run brain maintenance and consolidation.
+
+        Performs housekeeping operations on the knowledge graph:
+        merging near-duplicates, linking unlinked contradictions,
+        promoting stable inferences to facts, etc.
+
+        By default, runs in dry-run mode (no changes applied). Pass
+        ``confirm=True`` to apply changes.
+
+        Args:
+            deduplicate: Merge near-duplicate facts (default: False).
+            link_contradictions: Detect and link unlinked contradictions
+                (default: False).
+            promote_inferences: Upgrade stable inferences to facts
+                (default: False).
+            prune: Report orphaned nodes (default: False).
+            compress_episodes: Report episode compression candidates
+                (default: False).
+            all_operations: Run all operations (default: False).
+            threshold: Similarity threshold for deduplication
+                (default: 0.95).
+            confirm: Apply changes instead of dry-run (default: False).
+            backup: Path to save a backup before applying changes.
+                None = no backup.
+
+        Returns:
+            ConsolidationReport with actions taken/proposed and counts.
+
+        Example:
+            >>> report = brain.consolidate(deduplicate=True)
+            >>> print(f"Would merge {report.deduplicated} duplicates (dry run)")
+            >>> report = brain.consolidate(deduplicate=True, confirm=True)
+        """
+        if not self.exists:
+            raise BrainNotFoundError(str(self._path))
+
+        cmd: list[str] = ["consolidate", str(self._path)]
+
+        if deduplicate:
+            cmd.append("--deduplicate")
+        if link_contradictions:
+            cmd.append("--link-contradictions")
+        if promote_inferences:
+            cmd.append("--promote-inferences")
+        if prune:
+            cmd.append("--prune")
+        if compress_episodes:
+            cmd.append("--compress-episodes")
+        if all_operations:
+            cmd.append("--all")
+        cmd.extend(["--threshold", str(threshold)])
+        if confirm:
+            cmd.append("--confirm")
+        if backup is not None:
+            cmd.extend(["--backup", str(backup)])
+
+        data = self._cli_json(*cmd)
+        if not isinstance(data, dict):
+            data = {}
+        return parse_consolidation_report(data)
+
+    def drift(
+        self,
+        topic: str,
+        limit: int = 5,
+        min_relevance: float = 0.5,
+    ) -> DriftReport:
+        """Track how beliefs about a topic evolved over time.
+
+        Analyzes the temporal evolution of beliefs related to a topic
+        across sessions. Shows how confidence changed, which facts
+        were superseded, and whether beliefs are stabilizing or
+        still in flux.
+
+        Args:
+            topic: Topic to track (e.g., "programming language").
+            limit: Maximum timelines to return (default: 5).
+            min_relevance: Minimum relevance to the topic
+                (default: 0.5).
+
+        Returns:
+            DriftReport with timelines, overall stability score,
+            and whether beliefs are likely to change.
+
+        Example:
+            >>> report = brain.drift("preferred language")
+            >>> print(f"Stability: {report.stability:.1%}")
+            >>> if report.likely_to_change:
+            ...     print("Beliefs are still evolving")
+        """
+        if not self.exists:
+            raise BrainNotFoundError(str(self._path))
+
+        data = self._cli_json(
+            "drift", str(self._path), topic,
+            "--limit", str(limit),
+            "--min-relevance", str(min_relevance),
+        )
+        if not isinstance(data, dict):
+            data = {}
+        return parse_drift_report(data)
 
     # ================================================================
     # INTERNAL — Not part of public API

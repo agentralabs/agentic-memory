@@ -14,6 +14,14 @@ use agentic_memory::types::{
     CognitiveEvent, CognitiveEventBuilder, Edge, EdgeType, EventType, DEFAULT_DIMENSION,
 };
 
+// v0.2 query expansion imports
+use agentic_memory::{
+    AnalogicalAnchor, AnalogicalParams, BeliefRevisionParams, CentralityAlgorithm,
+    CentralityParams, ConsolidationOp, ConsolidationParams, DocLengths, DriftParams,
+    GapDetectionParams, GapSeverity, HybridSearchParams, ShortestPathParams, TermIndex,
+    TextSearchParams, Tokenizer,
+};
+
 /// Build a large graph using from_parts for fast construction.
 fn make_large_graph(node_count: usize, edges_per_node: usize) -> MemoryGraph {
     let mut rng = rand::thread_rng();
@@ -268,6 +276,329 @@ fn bench_decay_calculation(c: &mut Criterion) {
     });
 }
 
+// ===========================================================================
+// v0.2 Query Expansion Benchmarks
+// ===========================================================================
+
+/// Build a large graph with realistic text content for BM25 benchmarks.
+fn make_text_graph(node_count: usize, edges_per_node: usize) -> MemoryGraph {
+    let mut rng = rand::thread_rng();
+    let types = [
+        EventType::Fact,
+        EventType::Decision,
+        EventType::Inference,
+        EventType::Skill,
+        EventType::Episode,
+    ];
+    let edge_types = [
+        EdgeType::CausedBy,
+        EdgeType::Supports,
+        EdgeType::RelatedTo,
+        EdgeType::Contradicts,
+        EdgeType::Supersedes,
+    ];
+    let topics = [
+        "API rate limit configuration server",
+        "database PostgreSQL query optimization",
+        "Redis caching strategy performance",
+        "authentication JWT token security",
+        "deployment Kubernetes container orchestration",
+        "frontend React component rendering",
+        "machine learning model training inference",
+        "network latency bandwidth throughput",
+        "memory allocation garbage collection",
+        "testing unit integration regression",
+    ];
+
+    let mut nodes: Vec<CognitiveEvent> = Vec::with_capacity(node_count);
+    for i in 0..node_count {
+        let et = types[i % types.len()];
+        let topic = topics[i % topics.len()];
+        let content = format!("{} node_{} session_{}", topic, i, i / 100);
+        let mut fv = vec![0.0f32; DEFAULT_DIMENSION];
+        for val in &mut fv {
+            *val = rng.gen_range(-1.0..1.0);
+        }
+        let mut event = CognitiveEventBuilder::new(et, content)
+            .session_id(i as u32 / 100)
+            .confidence(rng.gen_range(0.1..1.0))
+            .feature_vec(fv)
+            .build();
+        event.id = i as u64;
+        nodes.push(event);
+    }
+
+    let mut edges: Vec<Edge> = Vec::with_capacity(node_count * edges_per_node);
+    for i in 0..node_count {
+        for _ in 0..edges_per_node {
+            let target = rng.gen_range(0..node_count);
+            if target != i {
+                let et = edge_types[rng.gen_range(0..edge_types.len())];
+                edges.push(Edge::new(
+                    i as u64,
+                    target as u64,
+                    et,
+                    rng.gen_range(0.1..1.0),
+                ));
+            }
+        }
+    }
+
+    MemoryGraph::from_parts(nodes, edges, DEFAULT_DIMENSION).unwrap()
+}
+
+fn bench_bm25_text_search_100k(c: &mut Criterion) {
+    let graph = make_text_graph(100_000, 3);
+    let query_engine = QueryEngine::new();
+    let tokenizer = Tokenizer::new();
+    let term_index = TermIndex::build(&graph, &tokenizer);
+    let doc_lengths = DocLengths::build(&graph, &tokenizer);
+
+    c.bench_function("bm25_fast_100k", |b| {
+        b.iter(|| {
+            let params = TextSearchParams {
+                query: "API rate limit".to_string(),
+                max_results: 10,
+                event_types: vec![],
+                session_ids: vec![],
+                min_score: 0.0,
+            };
+            let _ = query_engine.text_search(&graph, Some(&term_index), Some(&doc_lengths), params);
+        })
+    });
+}
+
+fn bench_bm25_slow_path_100k(c: &mut Criterion) {
+    let graph = make_text_graph(100_000, 3);
+    let query_engine = QueryEngine::new();
+
+    c.bench_function("bm25_slow_100k", |b| {
+        b.iter(|| {
+            let params = TextSearchParams {
+                query: "API rate limit".to_string(),
+                max_results: 10,
+                event_types: vec![],
+                session_ids: vec![],
+                min_score: 0.0,
+            };
+            let _ = query_engine.text_search(&graph, None, None, params);
+        })
+    });
+}
+
+fn bench_hybrid_search_100k(c: &mut Criterion) {
+    let graph = make_text_graph(100_000, 3);
+    let query_engine = QueryEngine::new();
+    let tokenizer = Tokenizer::new();
+    let term_index = TermIndex::build(&graph, &tokenizer);
+    let doc_lengths = DocLengths::build(&graph, &tokenizer);
+    let mut rng = rand::thread_rng();
+    let query_vec: Vec<f32> = (0..DEFAULT_DIMENSION)
+        .map(|_| rng.gen_range(-1.0..1.0))
+        .collect();
+
+    c.bench_function("hybrid_search_100k", |b| {
+        b.iter(|| {
+            let params = HybridSearchParams {
+                query_text: "database query optimization".to_string(),
+                query_vec: Some(query_vec.clone()),
+                max_results: 10,
+                event_types: vec![],
+                text_weight: 0.5,
+                vector_weight: 0.5,
+                rrf_k: 60,
+            };
+            let _ = query_engine.hybrid_search(&graph, Some(&term_index), Some(&doc_lengths), params);
+        })
+    });
+}
+
+fn bench_pagerank_100k(c: &mut Criterion) {
+    let graph = make_large_graph(100_000, 3);
+    let query_engine = QueryEngine::new();
+
+    c.bench_function("pagerank_100k", |b| {
+        b.iter(|| {
+            let params = CentralityParams {
+                algorithm: CentralityAlgorithm::PageRank { damping: 0.85 },
+                max_iterations: 100,
+                tolerance: 1e-6,
+                top_k: 10,
+                event_types: vec![],
+                edge_types: vec![],
+            };
+            let _ = query_engine.centrality(&graph, params);
+        })
+    });
+}
+
+fn bench_degree_centrality_100k(c: &mut Criterion) {
+    let graph = make_large_graph(100_000, 3);
+    let query_engine = QueryEngine::new();
+
+    c.bench_function("degree_centrality_100k", |b| {
+        b.iter(|| {
+            let params = CentralityParams {
+                algorithm: CentralityAlgorithm::Degree,
+                max_iterations: 0,
+                tolerance: 0.0,
+                top_k: 10,
+                event_types: vec![],
+                edge_types: vec![],
+            };
+            let _ = query_engine.centrality(&graph, params);
+        })
+    });
+}
+
+fn bench_betweenness_centrality_100k(c: &mut Criterion) {
+    let graph = make_large_graph(100_000, 3);
+    let query_engine = QueryEngine::new();
+
+    c.bench_function("betweenness_centrality_100k", |b| {
+        b.iter(|| {
+            let params = CentralityParams {
+                algorithm: CentralityAlgorithm::Betweenness,
+                max_iterations: 0,
+                tolerance: 0.0,
+                top_k: 10,
+                event_types: vec![],
+                edge_types: vec![],
+            };
+            let _ = query_engine.centrality(&graph, params);
+        })
+    });
+}
+
+fn bench_shortest_path_bfs_100k(c: &mut Criterion) {
+    let graph = make_large_graph(100_000, 3);
+    let query_engine = QueryEngine::new();
+
+    c.bench_function("shortest_path_bfs_100k", |b| {
+        b.iter(|| {
+            let params = ShortestPathParams {
+                source_id: 100,
+                target_id: 99_900,
+                edge_types: vec![],
+                direction: TraversalDirection::Forward,
+                max_depth: 20,
+                weighted: false,
+            };
+            let _ = query_engine.shortest_path(&graph, params);
+        })
+    });
+}
+
+fn bench_shortest_path_dijkstra_100k(c: &mut Criterion) {
+    let graph = make_large_graph(100_000, 3);
+    let query_engine = QueryEngine::new();
+
+    c.bench_function("shortest_path_dijkstra_100k", |b| {
+        b.iter(|| {
+            let params = ShortestPathParams {
+                source_id: 100,
+                target_id: 99_900,
+                edge_types: vec![],
+                direction: TraversalDirection::Forward,
+                max_depth: 20,
+                weighted: true,
+            };
+            let _ = query_engine.shortest_path(&graph, params);
+        })
+    });
+}
+
+fn bench_belief_revision_100k(c: &mut Criterion) {
+    let graph = make_text_graph(100_000, 3);
+    let query_engine = QueryEngine::new();
+
+    c.bench_function("belief_revision_100k", |b| {
+        b.iter(|| {
+            let params = BeliefRevisionParams {
+                hypothesis: "API rate limit is 200 requests per minute".to_string(),
+                hypothesis_vec: None,
+                contradiction_threshold: 0.5,
+                max_depth: 5,
+                hypothesis_confidence: 0.9,
+            };
+            let _ = query_engine.belief_revision(&graph, params);
+        })
+    });
+}
+
+fn bench_gap_detection_100k(c: &mut Criterion) {
+    let graph = make_text_graph(100_000, 3);
+    let query_engine = QueryEngine::new();
+
+    c.bench_function("gap_detection_100k", |b| {
+        b.iter(|| {
+            let params = GapDetectionParams {
+                confidence_threshold: 0.5,
+                min_support_count: 2,
+                max_results: 50,
+                session_range: None,
+                sort_by: GapSeverity::HighestImpact,
+            };
+            let _ = query_engine.gap_detection(&graph, params);
+        })
+    });
+}
+
+fn bench_analogical_100k(c: &mut Criterion) {
+    let graph = make_text_graph(100_000, 3);
+    let query_engine = QueryEngine::new();
+
+    c.bench_function("analogical_100k", |b| {
+        b.iter(|| {
+            let params = AnalogicalParams {
+                anchor: AnalogicalAnchor::Node(50_000),
+                context_depth: 2,
+                max_results: 5,
+                min_similarity: 0.0,
+                exclude_sessions: vec![],
+            };
+            let _ = query_engine.analogical(&graph, params);
+        })
+    });
+}
+
+fn bench_consolidation_dryrun_100k(c: &mut Criterion) {
+    let mut graph = make_text_graph(100_000, 3);
+    let query_engine = QueryEngine::new();
+
+    c.bench_function("consolidation_dryrun_100k", |b| {
+        b.iter(|| {
+            let params = ConsolidationParams {
+                session_range: None,
+                operations: vec![
+                    ConsolidationOp::DeduplicateFacts { threshold: 0.9 },
+                    ConsolidationOp::PruneOrphans { max_decay: 0.1 },
+                ],
+                dry_run: true,
+                backup_path: None,
+            };
+            let _ = query_engine.consolidate(&mut graph, params);
+        })
+    });
+}
+
+fn bench_drift_detection_100k(c: &mut Criterion) {
+    let graph = make_text_graph(100_000, 3);
+    let query_engine = QueryEngine::new();
+
+    c.bench_function("drift_detection_100k", |b| {
+        b.iter(|| {
+            let params = DriftParams {
+                topic: "database query optimization".to_string(),
+                topic_vec: None,
+                max_results: 10,
+                min_relevance: 0.1,
+            };
+            let _ = query_engine.drift_detection(&graph, params);
+        })
+    });
+}
+
 criterion_group!(
     benches,
     bench_add_node,
@@ -281,4 +612,23 @@ criterion_group!(
     bench_mmap_batch_similarity,
     bench_decay_calculation,
 );
-criterion_main!(benches);
+
+// v0.2 query expansion benchmarks
+criterion_group!(
+    v02_benches,
+    bench_bm25_text_search_100k,
+    bench_bm25_slow_path_100k,
+    bench_hybrid_search_100k,
+    bench_pagerank_100k,
+    bench_degree_centrality_100k,
+    bench_betweenness_centrality_100k,
+    bench_shortest_path_bfs_100k,
+    bench_shortest_path_dijkstra_100k,
+    bench_belief_revision_100k,
+    bench_gap_detection_100k,
+    bench_analogical_100k,
+    bench_consolidation_dryrun_100k,
+    bench_drift_detection_100k,
+);
+
+criterion_main!(benches, v02_benches);

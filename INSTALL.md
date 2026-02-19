@@ -56,6 +56,8 @@ amem info test.amem
 
 ### Available commands
 
+**Core commands:**
+
 | Command | Description |
 |:---|:---|
 | `amem create` | Create a new empty `.amem` file |
@@ -69,6 +71,22 @@ amem info test.amem
 | `amem export` | Export graph as JSON |
 | `amem import` | Import from JSON |
 | `amem stats` | Detailed graph statistics |
+
+**v0.2 query commands (9 new):**
+
+| Command | Description |
+|:---|:---|
+| `amem text-search` | BM25 text search (1.58 ms @ 100K with index) |
+| `amem hybrid-search` | Combined BM25 + vector search via RRF |
+| `amem centrality` | PageRank, degree, or betweenness centrality |
+| `amem path` | Shortest path (BFS or Dijkstra) between two nodes |
+| `amem revise` | Counterfactual belief revision analysis |
+| `amem gaps` | Detect reasoning weaknesses and gaps |
+| `amem analogy` | Find structurally similar past patterns |
+| `amem consolidate` | Dedup, contradiction linking, inference promotion |
+| `amem drift` | Track belief evolution over time |
+
+All commands support `--json` output for programmatic consumption.
 
 ---
 
@@ -173,10 +191,10 @@ pip install -e ".[dev]"
 ### Run tests
 
 ```bash
-# Rust tests (96 tests)
+# Rust tests (179 tests)
 cargo test
 
-# Python SDK tests (84 tests)
+# Python SDK tests (104 tests)
 cd python && pytest tests/ -v
 
 # Installer tests (39 tests)

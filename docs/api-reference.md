@@ -1,6 +1,6 @@
 # Python API Reference
 
-Complete reference for the `agentic_memory` Python package. Install with `pip install agentic-brain`.
+Complete reference for the `agentic_memory` Python package (v0.2.0). Install with `pip install agentic-brain`.
 
 ## Brain
 
@@ -325,6 +325,243 @@ Performs semantic similarity search across all events using 128-dimensional feat
 | `min_confidence` | `float` | `0.0` | Minimum confidence threshold. |
 
 **Returns:** `list[SearchResult]` -- results sorted by descending similarity score.
+
+---
+
+## v0.2 Query Expansion Methods
+
+The following nine methods were added in v0.2.0. All operate through the Rust CLI backend.
+
+### search_text()
+
+```python
+Brain.search_text(
+    query: str,
+    top_k: int = 10,
+    event_type: str | None = None
+) -> list[TextMatch]
+```
+
+BM25 text search over node content. Uses the TermIndex fast path when available (1.58 ms @ 100K nodes), falls back to full-scan slow path on v0.1 files (122 ms @ 100K).
+
+**Returns:** `list[TextMatch]` -- results with BM25 scores.
+
+---
+
+### search() (hybrid)
+
+```python
+Brain.search(
+    query: str,
+    top_k: int = 10
+) -> list[HybridMatch]
+```
+
+Hybrid search combining BM25 and vector similarity via Reciprocal Rank Fusion (RRF). Measured at 10.83 ms on 100K-node graphs.
+
+**Returns:** `list[HybridMatch]` -- results with combined, BM25, and vector scores.
+
+---
+
+### centrality()
+
+```python
+Brain.centrality(
+    metric: str = "pagerank",
+    event_type: str | None = None
+) -> list[CentralityResult]
+```
+
+Graph centrality analysis. Supported metrics: `"pagerank"` (34.3 ms @ 100K), `"degree"` (20.7 ms @ 100K), `"betweenness"` (10.1 s @ 100K).
+
+**Returns:** `list[CentralityResult]` -- nodes ranked by centrality score.
+
+---
+
+### shortest_path()
+
+```python
+Brain.shortest_path(
+    src: int,
+    dst: int,
+    weighted: bool = False
+) -> PathResult
+```
+
+Finds shortest path between two nodes. Uses bidirectional BFS for unweighted graphs (104 us @ 100K) or Dijkstra for weighted (17.6 ms @ 100K).
+
+**Returns:** `PathResult` -- the path as a sequence of node IDs and total cost.
+
+---
+
+### revise()
+
+```python
+Brain.revise(node_id: int) -> RevisionReport
+```
+
+Counterfactual belief revision. Computes the downstream cascade if the given node were retracted. Read-only -- no mutations. Measured at 53.4 ms @ 100K nodes.
+
+**Returns:** `RevisionReport` -- affected nodes, confidence losses, unsupported inferences.
+
+---
+
+### gaps()
+
+```python
+Brain.gaps(
+    min_severity: float = 0.0,
+    max_age_days: int = 30
+) -> GapReport
+```
+
+Identifies five categories of reasoning weaknesses: unjustified decisions, single-source inferences, low-confidence foundations, unstable knowledge, and stale evidence.
+
+**Returns:** `GapReport` -- gaps ordered by severity, with health score.
+
+---
+
+### analogy()
+
+```python
+Brain.analogy(
+    node_id: int,
+    top_k: int = 5
+) -> list[Analogy]
+```
+
+Finds structurally similar past reasoning patterns using structural fingerprints (in-degree, out-degree, edge-type distribution) combined with content similarity.
+
+**Returns:** `list[Analogy]` -- top-k analogous nodes with similarity scores.
+
+---
+
+### consolidate()
+
+```python
+Brain.consolidate(
+    dry_run: bool = True
+) -> ConsolidationReport
+```
+
+Graph maintenance: deduplication, contradiction linking, inference promotion, orphan detection. Dry-run mode (default) reports proposed changes without modifying the graph.
+
+**Returns:** `ConsolidationReport` -- proposed or applied changes.
+
+---
+
+### drift()
+
+```python
+Brain.drift(
+    topic: str | None = None
+) -> DriftReport
+```
+
+Tracks belief evolution over time by analyzing supersedes chains and confidence trajectories. Measured at 68.4 ms @ 100K nodes.
+
+**Returns:** `DriftReport` -- per-topic stability scores, drift direction, revision frequency.
+
+---
+
+## v0.2 Result Dataclasses
+
+### TextMatch
+
+```python
+@dataclass
+class TextMatch:
+    node_id: int
+    content: str
+    bm25_score: float
+    event_type: str
+```
+
+### HybridMatch
+
+```python
+@dataclass
+class HybridMatch:
+    node_id: int
+    content: str
+    combined_score: float
+    bm25_score: float
+    vector_score: float
+```
+
+### CentralityResult
+
+```python
+@dataclass
+class CentralityResult:
+    node_id: int
+    score: float
+    content: str
+```
+
+### PathResult
+
+```python
+@dataclass
+class PathResult:
+    path: list[int]
+    total_cost: float
+    found: bool
+```
+
+### RevisionReport
+
+```python
+@dataclass
+class RevisionReport:
+    target_id: int
+    affected_nodes: list[int]
+    confidence_losses: dict[int, float]
+    unsupported: list[int]
+    total_impact: float
+```
+
+### GapReport
+
+```python
+@dataclass
+class GapReport:
+    gaps: list[dict]
+    health_score: float
+    total_gaps: int
+```
+
+### Analogy
+
+```python
+@dataclass
+class Analogy:
+    node_id: int
+    structural_score: float
+    content_score: float
+    combined_score: float
+```
+
+### ConsolidationReport
+
+```python
+@dataclass
+class ConsolidationReport:
+    duplicates: list[tuple[int, int, float]]
+    contradictions: list[tuple[int, int]]
+    promotions: list[int]
+    orphans: list[int]
+    dry_run: bool
+```
+
+### DriftReport
+
+```python
+@dataclass
+class DriftReport:
+    topics: list[dict]
+    overall_stability: float
+```
 
 ---
 

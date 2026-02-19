@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::index::{ClusterMap, SessionIndex, TemporalIndex, TypeIndex};
+use crate::index::{ClusterMap, DocLengths, SessionIndex, TemporalIndex, TermIndex, TypeIndex};
 use crate::types::{AmemError, AmemResult, CognitiveEvent, Edge, EdgeType, MAX_EDGES_PER_NODE};
 
 /// The core in-memory graph structure holding cognitive events and their relationships.
@@ -27,6 +27,10 @@ pub struct MemoryGraph {
     pub(crate) session_index: SessionIndex,
     /// Cluster map.
     pub(crate) cluster_map: ClusterMap,
+    /// BM25 inverted index (optional, may not be present in old files).
+    pub term_index: Option<TermIndex>,
+    /// Document lengths for BM25 normalization (optional).
+    pub doc_lengths: Option<DocLengths>,
 }
 
 impl MemoryGraph {
@@ -43,6 +47,8 @@ impl MemoryGraph {
             temporal_index: TemporalIndex::new(),
             session_index: SessionIndex::new(),
             cluster_map: ClusterMap::new(dimension),
+            term_index: None,
+            doc_lengths: None,
         }
     }
 
@@ -65,6 +71,8 @@ impl MemoryGraph {
             temporal_index: TemporalIndex::new(),
             session_index: SessionIndex::new(),
             cluster_map: ClusterMap::new(dimension),
+            term_index: None,
+            doc_lengths: None,
         };
 
         // Insert nodes directly (they already have IDs assigned)
@@ -337,5 +345,25 @@ impl MemoryGraph {
     /// Get a mutable reference to the cluster map.
     pub fn cluster_map_mut(&mut self) -> &mut ClusterMap {
         &mut self.cluster_map
+    }
+
+    /// Get the term index (for BM25 search). None if not built.
+    pub fn term_index(&self) -> Option<&TermIndex> {
+        self.term_index.as_ref()
+    }
+
+    /// Get the doc lengths (for BM25 normalization). None if not built.
+    pub fn doc_lengths(&self) -> Option<&DocLengths> {
+        self.doc_lengths.as_ref()
+    }
+
+    /// Set the term index.
+    pub fn set_term_index(&mut self, index: TermIndex) {
+        self.term_index = Some(index);
+    }
+
+    /// Set the doc lengths.
+    pub fn set_doc_lengths(&mut self, lengths: DocLengths) {
+        self.doc_lengths = Some(lengths);
     }
 }

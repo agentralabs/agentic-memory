@@ -26,6 +26,16 @@ from agentic_memory.models import (
     TraversalResult,
     ImpactResult,
 )
+from agentic_memory.results import (
+    TextMatch,
+    HybridMatch,
+    PathResult,
+    RevisionReport,
+    GapReport,
+    Analogy,
+    ConsolidationReport,
+    DriftReport,
+)
 from agentic_memory.integrations.base import ChatMessage, ChatResponse
 from agentic_memory.errors import (
     AmemError,
@@ -37,7 +47,7 @@ from agentic_memory.errors import (
     ProviderError,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "Brain",
     "MemoryAgent",
@@ -49,6 +59,14 @@ __all__ = [
     "SessionInfo",
     "TraversalResult",
     "ImpactResult",
+    "TextMatch",
+    "HybridMatch",
+    "PathResult",
+    "RevisionReport",
+    "GapReport",
+    "Analogy",
+    "ConsolidationReport",
+    "DriftReport",
     "ChatMessage",
     "ChatResponse",
     "AmemError",

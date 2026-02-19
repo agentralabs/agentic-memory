@@ -2,6 +2,49 @@
 
 All notable changes to AgenticMemory will be documented in this file.
 
+## [0.2.0] - 2026-02-18
+
+### Added
+
+- **Query Expansion: 9 new query types (queries 8-16)**
+  - BM25 text search with inverted index (fast path) and full-scan fallback (slow path)
+  - Hybrid search combining BM25 + vector similarity via Reciprocal Rank Fusion (RRF)
+  - Graph centrality: PageRank, degree centrality, and betweenness centrality (Brandes' algorithm)
+  - Shortest path: bidirectional BFS (unweighted) and Dijkstra's algorithm (weighted)
+  - Belief revision: counterfactual analysis with cascade propagation (read-only)
+  - Reasoning gap detection: unjustified decisions, single-source inferences, low-confidence foundations, unstable knowledge, stale evidence
+  - Analogical query: structural fingerprinting to find similar past reasoning patterns
+  - Consolidation: deduplication, contradiction linking, inference promotion (with dry-run mode)
+  - Drift detection: belief trajectory tracking with stability scoring
+
+- **New index structures**
+  - TermIndex (tag 0x05): BM25 inverted index with posting lists
+  - DocLengths (tag 0x06): dense array of token counts per node
+  - Feature flags bitfield in header for forward/backward compatibility
+
+- **9 new CLI commands**
+  - `amem text-search`, `amem hybrid-search`, `amem centrality`, `amem path`
+  - `amem revise`, `amem gaps`, `amem analogy`, `amem consolidate`, `amem drift`
+
+- **Python SDK additions**
+  - 9 new Brain methods: search_text(), search(), centrality(), shortest_path(), revise(), gaps(), analogy(), consolidate(), drift()
+  - New result dataclasses in agentic_memory/results.py
+
+- **Backward compatibility**
+  - v0.1 files readable by v0.2 code (new queries use slow path)
+  - v0.2 files skip unknown index tags gracefully for older readers
+  - Feature flags in previously reserved header field
+
+### Test coverage
+
+- Rust core: 179 tests (83 new for v0.2 query methods)
+- Python SDK: 104 tests (20 new for v0.2 query wrappers)
+- Total across all suites: 440 tests
+
+### No new dependencies
+
+All algorithms (PageRank, BFS, Dijkstra, BM25) implemented with `std::collections` only.
+
 ## [0.1.0] - 2025-02-18
 
 ### Added

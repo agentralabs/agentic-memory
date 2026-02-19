@@ -123,7 +123,7 @@ Yes. AgenticMemory supports Windows (x86_64) with the following notes:
 - Memory-mapped file size may be limited by the virtual address space on 32-bit Windows. Use 64-bit Windows for brain files larger than ~1 GB.
 - The MCP server (`amem mcp-serve`) works on Windows but requires port configuration if the default port is in use.
 
-The CI pipeline runs the full test suite (337 tests) on Windows, macOS, and Linux for every release.
+The CI pipeline runs the full test suite (440 tests) on Windows, macOS, and Linux for every release.
 
 ## How do embeddings work?
 

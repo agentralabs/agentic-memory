@@ -8,7 +8,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-agentic-memory = "0.1"
+agentic-memory = "0.2"
 ```
 
 ---
@@ -437,6 +437,129 @@ for (node_id, score) in results {
 
 ---
 
+## v0.2 Query Methods
+
+Added in v0.2.0. All methods are available on `QueryEngine`.
+
+### search_text()
+
+```rust
+pub fn search_text(&self, query: &str, top_k: usize) -> Vec<TextMatch>;
+```
+
+BM25 text search using the inverted term index. Falls back to full scan for v0.1 files without a TermIndex.
+
+**Performance:** 1.58 ms @ 100K nodes (fast path), 122 ms (slow path).
+
+---
+
+### search_hybrid()
+
+```rust
+pub fn search_hybrid(
+    &self,
+    query: &str,
+    query_vector: &[f32; 128],
+    top_k: usize,
+    alpha: f32,
+) -> Vec<HybridMatch>;
+```
+
+Combined BM25 + cosine similarity search with RRF (Reciprocal Rank Fusion). `alpha` controls the BM25/vector weight balance (0.0 = pure vector, 1.0 = pure BM25).
+
+**Performance:** 10.83 ms @ 100K nodes.
+
+---
+
+### centrality()
+
+```rust
+pub fn centrality(&self, metric: CentralityMetric) -> Vec<(NodeId, f64)>;
+```
+
+Computes centrality scores for all nodes. Available metrics: `PageRank`, `Degree`, `Betweenness`.
+
+**Performance:** PageRank 34.3 ms, Degree 20.7 ms, Betweenness 10.1 s @ 100K nodes.
+
+---
+
+### shortest_path()
+
+```rust
+pub fn shortest_path(
+    &self,
+    src: NodeId,
+    dst: NodeId,
+    algorithm: PathAlgorithm,
+) -> Option<PathResult>;
+```
+
+Finds the shortest path between two nodes. Available algorithms: `BFS` (unweighted), `Dijkstra` (weighted).
+
+**Performance:** BFS 104 µs, Dijkstra 17.6 ms @ 100K nodes.
+
+---
+
+### revise()
+
+```rust
+pub fn revise(&self, node_id: NodeId) -> RevisionReport;
+```
+
+Counterfactual belief revision: computes a cascade of what would change if the given node were retracted. Read-only — does not modify the graph.
+
+**Performance:** 53.4 ms @ 100K nodes.
+
+---
+
+### gaps()
+
+```rust
+pub fn gaps(&self) -> GapReport;
+```
+
+Identifies reasoning weaknesses: unsupported decisions, isolated facts, contradictions without corrections, and weak inference chains.
+
+**Performance:** 297 s @ 100K nodes (offline tier). Completes in <3 s at 10K nodes.
+
+---
+
+### analogy()
+
+```rust
+pub fn analogy(&self, node_id: NodeId, top_k: usize) -> Vec<Analogy>;
+```
+
+Structural pattern matching: finds subgraph patterns similar to the local neighborhood of the given node.
+
+**Performance:** 229 s @ 100K nodes (offline tier). Completes in <3 s at 10K nodes.
+
+---
+
+### consolidate()
+
+```rust
+pub fn consolidate(&self, dry_run: bool) -> ConsolidationReport;
+```
+
+Graph maintenance: detects duplicate content, links contradictions, and suggests merges. When `dry_run` is true, returns the report without modifying the graph.
+
+**Performance:** 43.6 s @ 100K nodes (periodic tier).
+
+---
+
+### drift()
+
+```rust
+pub fn drift(&self) -> DriftReport;
+```
+
+Analyzes supersedes chains to track how beliefs have evolved over time.
+
+**Performance:** 68.4 ms @ 100K nodes.
+
+---
+
 ## CLI Reference: `amem`
 
 The `amem` binary provides command-line access to all core operations.
@@ -566,7 +689,7 @@ amem query <PATH> [OPTIONS]
 
 | Flag | Description |
 |------|-------------|
-| `--type <TYPE>` | Filter by event type. |
+| `--event-types <TYPE>` | Filter by event type. |
 | `--session <INT>` | Filter by session ID. |
 | `--search <TEXT>` | Semantic similarity search query. |
 | `--top-k <INT>` | Number of results for similarity search. Default: 10. |
@@ -576,7 +699,7 @@ amem query <PATH> [OPTIONS]
 **Example:**
 
 ```bash
-amem query project.amem --type fact --min-confidence 0.8
+amem query project.amem --event-types fact --min-confidence 0.8
 amem query project.amem --search "database performance" --top-k 5
 ```
 
@@ -604,3 +727,81 @@ amem mcp-serve project.amem --port 3100
 ```
 
 This exposes the brain as MCP tools that Claude Code, Cursor, Windsurf, and other MCP-compatible editors can connect to. See the [Integration Guide](integration-guide.md) for configuration details.
+
+---
+
+### v0.2 CLI Commands
+
+These commands were added in v0.2.0.
+
+#### amem text-search
+
+BM25 text search.
+
+```bash
+amem text-search <PATH> <QUERY> [--top-k <INT>]
+```
+
+#### amem hybrid-search
+
+Hybrid BM25 + vector search with RRF fusion.
+
+```bash
+amem hybrid-search <PATH> <QUERY> [--top-k <INT>] [--alpha <FLOAT>]
+```
+
+#### amem centrality
+
+Compute centrality scores.
+
+```bash
+amem centrality <PATH> --metric <pagerank|degree|betweenness> [--top-k <INT>] [--json]
+```
+
+#### amem path
+
+Find shortest path between two nodes.
+
+```bash
+amem path <PATH> <SRC_ID> <DST_ID> [--algorithm <bfs|dijkstra>] [--json]
+```
+
+#### amem revise
+
+Run counterfactual belief revision cascade.
+
+```bash
+amem revise <PATH> <NODE_ID> [--json]
+```
+
+#### amem gaps
+
+Detect reasoning gaps and weaknesses.
+
+```bash
+amem gaps <PATH> [--json]
+```
+
+#### amem analogy
+
+Find structural analogies for a node.
+
+```bash
+amem analogy <PATH> <NODE_ID> [--top-k <INT>] [--json]
+```
+
+#### amem consolidate
+
+Run graph consolidation (dedup, contradiction linking).
+
+```bash
+amem consolidate <PATH> [--dry-run] [--json]
+```
+
+#### amem drift
+
+Detect belief drift through supersedes chains.
+
+```bash
+amem drift <PATH> [--json]
+```

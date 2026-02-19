@@ -18,7 +18,7 @@ Requires Python 3.10 or later. The package includes pre-built binaries for macOS
 cargo install amem
 ```
 
-This installs the `amem` binary. Requires Rust 1.70 or later.
+This installs the `amem` binary. Requires Rust 1.70 or later (tested with 1.90.0).
 
 ### From Source
 
@@ -125,7 +125,7 @@ result = brain.traverse(fact.id, depth=3)
 for node in result.nodes:
     print(f"  [{node.event_type}] {node.content}")
 
-# Semantic search across all events
+# Hybrid search (BM25 + vector) across all events
 matches = brain.search("project timeline", top_k=5)
 for match in matches:
     print(f"  Score: {match.score:.3f} | {match.event.content}")
@@ -134,9 +134,48 @@ for match in matches:
 ### CLI
 
 ```bash
-amem query my_agent.amem --type fact
+amem query my_agent.amem --event-types fact
 amem traverse my_agent.amem 0 --depth 3
 amem query my_agent.amem --search "project timeline" --top-k 5
+```
+
+## v0.2 Advanced Queries
+
+v0.2.0 added nine new query types for retrieval, structural analysis, cognitive reasoning, and graph maintenance:
+
+```python
+# BM25 text search (1.58 ms @ 100K nodes)
+results = brain.search_text("project timeline")
+
+# Hybrid BM25 + vector search (10.83 ms @ 100K nodes)
+results = brain.search("project timeline", top_k=10)
+
+# Structural: PageRank centrality (34.3 ms @ 100K)
+scores = brain.centrality(metric="pagerank")
+
+# Structural: Shortest path via BFS (104 µs @ 100K)
+path = brain.shortest_path(src=fact.id, dst=decision.id)
+
+# Cognitive: Belief revision cascade (53.4 ms @ 100K)
+report = brain.revise(node_id=fact.id)
+
+# Cognitive: Find reasoning gaps
+gaps = brain.gaps()
+
+# Maintenance: Detect belief drift (68.4 ms @ 100K)
+drift = brain.drift()
+```
+
+### CLI
+
+```bash
+amem text-search my_agent.amem "project timeline"
+amem hybrid-search my_agent.amem "project timeline" --top-k 10
+amem centrality my_agent.amem --metric pagerank
+amem path my_agent.amem 0 2
+amem revise my_agent.amem 0
+amem gaps my_agent.amem
+amem drift my_agent.amem
 ```
 
 ## Add Corrections

@@ -82,7 +82,7 @@ All docs are in `docs/`. Fix typos, add examples, clarify explanations — all w
 
 - **Rust**: Follow standard Rust conventions. Run `cargo clippy` and `cargo fmt`.
 - **Python**: Follow PEP 8. Use type hints. Run `mypy` for type checking.
-- **Tests**: Every feature needs tests. We maintain 337+ tests across the stack.
+- **Tests**: Every feature needs tests. We maintain 440+ tests across the stack (179 Rust, 104 Python SDK, 97 agent, 21 cross-provider, 39 installer).
 - **Documentation**: Update docs when changing public APIs.
 
 ## Commit Messages

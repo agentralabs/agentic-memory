@@ -36,7 +36,7 @@ def test_import_agent():
 def test_version():
     """Package version should be set."""
     from agentic_memory import __version__
-    assert __version__ == "0.1.0"
+    assert __version__ == "0.2.0"
 
 
 def test_all_exports():

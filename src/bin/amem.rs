@@ -193,6 +193,188 @@ enum Commands {
         /// Path to the .amem file
         file: PathBuf,
     },
+    /// BM25 text search over node contents
+    TextSearch {
+        /// Path to the .amem file
+        file: PathBuf,
+        /// Search query text
+        query: String,
+        /// Comma-separated event types to filter
+        #[arg(long, name = "type")]
+        event_types: Option<String>,
+        /// Comma-separated session IDs
+        #[arg(long)]
+        session: Option<String>,
+        /// Maximum results
+        #[arg(long, default_value = "20")]
+        limit: usize,
+        /// Minimum BM25 score
+        #[arg(long, default_value = "0.0")]
+        min_score: f32,
+    },
+    /// Combined BM25 + vector search with RRF fusion
+    HybridSearch {
+        /// Path to the .amem file
+        file: PathBuf,
+        /// Search query text
+        query: String,
+        /// BM25 weight 0.0-1.0
+        #[arg(long, default_value = "0.5")]
+        text_weight: f32,
+        /// Vector weight 0.0-1.0
+        #[arg(long, default_value = "0.5")]
+        vec_weight: f32,
+        /// Maximum results
+        #[arg(long, default_value = "20")]
+        limit: usize,
+        /// Comma-separated event types to filter
+        #[arg(long, name = "type")]
+        event_types: Option<String>,
+    },
+    /// Compute node importance scores
+    Centrality {
+        /// Path to the .amem file
+        file: PathBuf,
+        /// Algorithm: pagerank, degree, or betweenness
+        #[arg(long, default_value = "pagerank")]
+        algorithm: String,
+        /// PageRank damping factor
+        #[arg(long, default_value = "0.85")]
+        damping: f32,
+        /// Comma-separated edge types to consider
+        #[arg(long)]
+        edge_types: Option<String>,
+        /// Comma-separated event types to filter
+        #[arg(long, name = "type")]
+        event_types: Option<String>,
+        /// Top N results
+        #[arg(long, default_value = "20")]
+        limit: usize,
+        /// Max iterations for PageRank
+        #[arg(long, default_value = "100")]
+        iterations: u32,
+    },
+    /// Find shortest path between two nodes
+    Path {
+        /// Path to the .amem file
+        file: PathBuf,
+        /// Source node ID
+        source_id: u64,
+        /// Target node ID
+        target_id: u64,
+        /// Comma-separated edge types to traverse
+        #[arg(long)]
+        edge_types: Option<String>,
+        /// Direction: forward, backward, or both
+        #[arg(long, default_value = "both")]
+        direction: String,
+        /// Maximum path length
+        #[arg(long, default_value = "20")]
+        max_depth: u32,
+        /// Use edge weights for path cost
+        #[arg(long)]
+        weighted: bool,
+    },
+    /// Belief revision — counterfactual analysis
+    Revise {
+        /// Path to the .amem file
+        file: PathBuf,
+        /// The hypothetical new fact to test
+        hypothesis: String,
+        /// Contradiction detection threshold
+        #[arg(long, default_value = "0.6")]
+        threshold: f32,
+        /// Propagation depth
+        #[arg(long, default_value = "10")]
+        max_depth: u32,
+        /// Confidence of hypothesis
+        #[arg(long, default_value = "0.9")]
+        confidence: f32,
+    },
+    /// Reasoning gap detection
+    Gaps {
+        /// Path to the .amem file
+        file: PathBuf,
+        /// Confidence threshold
+        #[arg(long, default_value = "0.5")]
+        threshold: f32,
+        /// Min support edges for decisions
+        #[arg(long, default_value = "1")]
+        min_support: u32,
+        /// Maximum gaps to report
+        #[arg(long, default_value = "20")]
+        limit: usize,
+        /// Sort: dangerous, recent, or confidence
+        #[arg(long, default_value = "dangerous")]
+        sort: String,
+        /// Session range "start:end"
+        #[arg(long)]
+        session: Option<String>,
+    },
+    /// Find structurally similar past situations
+    Analogy {
+        /// Path to the .amem file
+        file: PathBuf,
+        /// Text describing the current situation
+        description: String,
+        /// Maximum analogies
+        #[arg(long, default_value = "5")]
+        limit: usize,
+        /// Minimum structural match
+        #[arg(long, default_value = "0.3")]
+        min_similarity: f32,
+        /// Comma-separated sessions to exclude
+        #[arg(long)]
+        exclude_session: Option<String>,
+        /// Context depth
+        #[arg(long, default_value = "2")]
+        depth: u32,
+    },
+    /// Brain maintenance — consolidation
+    Consolidate {
+        /// Path to the .amem file
+        file: PathBuf,
+        /// Merge near-duplicate facts
+        #[arg(long)]
+        deduplicate: bool,
+        /// Detect and link unlinked contradictions
+        #[arg(long)]
+        link_contradictions: bool,
+        /// Upgrade stable inferences to facts
+        #[arg(long)]
+        promote_inferences: bool,
+        /// Report orphaned nodes (dry-run only)
+        #[arg(long)]
+        prune: bool,
+        /// Report episode compression candidates (dry-run only)
+        #[arg(long)]
+        compress_episodes: bool,
+        /// Run all operations
+        #[arg(long)]
+        all: bool,
+        /// Similarity threshold for dedup
+        #[arg(long, default_value = "0.95")]
+        threshold: f32,
+        /// Actually apply changes (default: dry-run)
+        #[arg(long)]
+        confirm: bool,
+        /// Backup path
+        #[arg(long)]
+        backup: Option<PathBuf>,
+    },
+    /// Track how beliefs about a topic evolved
+    Drift {
+        /// Path to the .amem file
+        file: PathBuf,
+        /// Topic to track
+        topic: String,
+        /// Maximum timelines
+        #[arg(long, default_value = "5")]
+        limit: usize,
+        /// Minimum relevance
+        #[arg(long, default_value = "0.5")]
+        min_relevance: f32,
+    },
 }
 
 fn main() {
@@ -329,6 +511,181 @@ fn main() {
         Commands::Import { file, json_file } => commands::cmd_import(&file, &json_file),
         Commands::Decay { file, threshold } => commands::cmd_decay(&file, threshold, json),
         Commands::Stats { file } => commands::cmd_stats(&file, json),
+        Commands::TextSearch {
+            file,
+            query,
+            event_types,
+            session,
+            limit,
+            min_score,
+        } => {
+            let ets: Vec<EventType> = event_types
+                .map(|s| {
+                    s.split(',')
+                        .filter_map(|t| EventType::from_name(t.trim()))
+                        .collect()
+                })
+                .unwrap_or_default();
+            let sids: Vec<u32> = session
+                .map(|s| s.split(',').filter_map(|t| t.trim().parse().ok()).collect())
+                .unwrap_or_default();
+            commands::cmd_text_search(&file, &query, ets, sids, limit, min_score, json)
+        }
+        Commands::HybridSearch {
+            file,
+            query,
+            text_weight,
+            vec_weight,
+            limit,
+            event_types,
+        } => {
+            let ets: Vec<EventType> = event_types
+                .map(|s| {
+                    s.split(',')
+                        .filter_map(|t| EventType::from_name(t.trim()))
+                        .collect()
+                })
+                .unwrap_or_default();
+            commands::cmd_hybrid_search(&file, &query, text_weight, vec_weight, limit, ets, json)
+        }
+        Commands::Centrality {
+            file,
+            algorithm,
+            damping,
+            edge_types,
+            event_types,
+            limit,
+            iterations,
+        } => {
+            let ets: Vec<EventType> = event_types
+                .map(|s| {
+                    s.split(',')
+                        .filter_map(|t| EventType::from_name(t.trim()))
+                        .collect()
+                })
+                .unwrap_or_default();
+            let edts: Vec<EdgeType> = edge_types
+                .map(|s| {
+                    s.split(',')
+                        .filter_map(|t| EdgeType::from_name(t.trim()))
+                        .collect()
+                })
+                .unwrap_or_default();
+            commands::cmd_centrality(
+                &file, &algorithm, damping, edts, ets, limit, iterations, json,
+            )
+        }
+        Commands::Path {
+            file,
+            source_id,
+            target_id,
+            edge_types,
+            direction,
+            max_depth,
+            weighted,
+        } => {
+            let edts: Vec<EdgeType> = edge_types
+                .map(|s| {
+                    s.split(',')
+                        .filter_map(|t| EdgeType::from_name(t.trim()))
+                        .collect()
+                })
+                .unwrap_or_default();
+            let dir = match direction.as_str() {
+                "forward" => TraversalDirection::Forward,
+                "backward" => TraversalDirection::Backward,
+                _ => TraversalDirection::Both,
+            };
+            commands::cmd_path(
+                &file, source_id, target_id, edts, dir, max_depth, weighted, json,
+            )
+        }
+        Commands::Revise {
+            file,
+            hypothesis,
+            threshold,
+            max_depth,
+            confidence,
+        } => commands::cmd_revise(&file, &hypothesis, threshold, max_depth, confidence, json),
+        Commands::Gaps {
+            file,
+            threshold,
+            min_support,
+            limit,
+            sort,
+            session,
+        } => {
+            let session_range = session.and_then(|s| {
+                let parts: Vec<&str> = s.split(':').collect();
+                if parts.len() == 2 {
+                    let start: u32 = parts[0].trim().parse().ok()?;
+                    let end: u32 = parts[1].trim().parse().ok()?;
+                    Some((start, end))
+                } else {
+                    None
+                }
+            });
+            commands::cmd_gaps(
+                &file,
+                threshold,
+                min_support,
+                limit,
+                &sort,
+                session_range,
+                json,
+            )
+        }
+        Commands::Analogy {
+            file,
+            description,
+            limit,
+            min_similarity,
+            exclude_session,
+            depth,
+        } => {
+            let exclude: Vec<u32> = exclude_session
+                .map(|s| s.split(',').filter_map(|t| t.trim().parse().ok()).collect())
+                .unwrap_or_default();
+            commands::cmd_analogy(
+                &file,
+                &description,
+                limit,
+                min_similarity,
+                exclude,
+                depth,
+                json,
+            )
+        }
+        Commands::Consolidate {
+            file,
+            deduplicate,
+            link_contradictions,
+            promote_inferences,
+            prune,
+            compress_episodes,
+            all,
+            threshold,
+            confirm,
+            backup,
+        } => commands::cmd_consolidate(
+            &file,
+            deduplicate,
+            link_contradictions,
+            promote_inferences,
+            prune,
+            compress_episodes,
+            all,
+            threshold,
+            confirm,
+            backup,
+            json,
+        ),
+        Commands::Drift {
+            file,
+            topic,
+            limit,
+            min_relevance,
+        } => commands::cmd_drift(&file, &topic, limit, min_relevance, json),
     };
 
     if let Err(e) = result {

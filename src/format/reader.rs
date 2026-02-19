@@ -4,6 +4,7 @@ use std::io::Read;
 use std::path::Path;
 
 use crate::graph::MemoryGraph;
+use crate::index::{DocLengths, TermIndex};
 use crate::types::error::{AmemError, AmemResult};
 use crate::types::header::FileHeader;
 use crate::types::{CognitiveEvent, Edge, EdgeType, EventType};
@@ -97,8 +98,52 @@ impl AmemReader {
             node.feature_vec = vec;
         }
 
-        // Build graph from parts (this rebuilds indexes)
-        MemoryGraph::from_parts(nodes, edges, dimension)
+        // Build graph from parts (this rebuilds type/temporal/session indexes)
+        let mut graph = MemoryGraph::from_parts(nodes, edges, dimension)?;
+
+        // Parse index block for new BM25 indexes (tags 0x05, 0x06)
+        // The index block starts after the feature vector block
+        let index_block_start = fv_start + node_count * dimension * 4;
+        let mut pos = index_block_start;
+
+        while pos + 9 <= data.len() {
+            // Each index: [tag: u8][length: u64][data: length bytes]
+            let tag = data[pos];
+            pos += 1;
+            let length = u64::from_le_bytes(data[pos..pos + 8].try_into().unwrap()) as usize;
+            pos += 8;
+
+            if pos + length > data.len() {
+                break; // Truncated index block, skip gracefully
+            }
+
+            match tag {
+                0x01..=0x04 => {
+                    // Existing indexes — already rebuilt from nodes by from_parts, skip
+                    pos += length;
+                }
+                0x05 => {
+                    // Term Index
+                    if let Some(ti) = TermIndex::from_bytes(&data[pos..pos + length]) {
+                        graph.set_term_index(ti);
+                    }
+                    pos += length;
+                }
+                0x06 => {
+                    // Doc Lengths
+                    if let Some(dl) = DocLengths::from_bytes(&data[pos..pos + length]) {
+                        graph.set_doc_lengths(dl);
+                    }
+                    pos += length;
+                }
+                _ => {
+                    // Unknown tag — skip gracefully (forward compatibility)
+                    pos += length;
+                }
+            }
+        }
+
+        Ok(graph)
     }
 }
 

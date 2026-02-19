@@ -6,9 +6,9 @@ Performance measurements for AgenticMemory's core operations across various grap
 
 | Parameter | Value |
 |-----------|-------|
-| Hardware | Apple M-series (ARM64), 16 GB unified memory |
+| Hardware | Apple M4 Pro (ARM64), 64 GB unified memory |
 | OS | macOS (Darwin) |
-| Rust | 1.75+ (release profile, LTO enabled) |
+| Rust | 1.90.0 (release profile, `--release`) |
 | Benchmark framework | `criterion.rs` 0.5 |
 | Iterations | 100 per measurement (minimum), with statistical warm-up |
 | Feature vectors | 128-dimensional, f32 |
@@ -195,3 +195,61 @@ cargo flamegraph --bench core_benchmarks -- --bench
 ```
 
 This generates an SVG flamegraph showing where time is spent during benchmark execution.
+
+---
+
+## v0.2 Query Expansion Benchmarks
+
+All v0.2 query types benchmarked on 100K-node synthetic graphs (300K edges, 3 edges/node average). Measured with Criterion (100 samples) except where noted.
+
+### All Query Types at 100K Nodes
+
+| Category | Query | Latency | Notes |
+|----------|-------|---------|-------|
+| Retrieval | BM25 text search (fast path) | **1.58 ms** | Uses TermIndex |
+| Retrieval | BM25 text search (slow path) | **122 ms** | Full scan fallback for v0.1 files |
+| Retrieval | Hybrid search (BM25 + vector) | **10.83 ms** | RRF fusion |
+| Structure | PageRank (alpha=0.85) | **34.3 ms** | Iterative convergence |
+| Structure | Degree centrality | **20.7 ms** | Normalized degree |
+| Structure | Betweenness centrality | **10.1 s** | Brandes' algorithm, sampled |
+| Structure | Shortest path (BFS) | **104 us** | Bidirectional BFS |
+| Structure | Shortest path (Dijkstra) | **17.6 ms** | Binary heap |
+| Cognitive | Belief revision | **53.4 ms** | Counterfactual cascade |
+| Cognitive | Gap detection | **297 s** | Single-run measurement |
+| Cognitive | Analogical query | **229 s** | Single-run measurement |
+| Maintenance | Consolidation (dry run) | **43.6 s** | Single-run measurement |
+| Maintenance | Drift detection | **68.4 ms** | Supersedes chain analysis |
+
+### Scaling from 10K to 100K Nodes
+
+| Query | 10K | 100K | Scaling Ratio |
+|-------|-----|------|---------------|
+| BM25 (fast) | 186 us | 1.58 ms | 8.5x |
+| Hybrid | 1.00 ms | 10.83 ms | 10.8x |
+| PageRank | 2.53 ms | 34.3 ms | 13.6x |
+| Degree centrality | 1.73 ms | 20.7 ms | 12.0x |
+| Betweenness centrality | 6.43 s | 10.1 s | 1.6x |
+| BFS shortest path | 7.9 us | 104 us | 13.2x |
+| Dijkstra shortest path | 888 us | 17.6 ms | 19.8x |
+| Belief revision | 6.26 ms | 53.4 ms | 8.5x |
+| Gap detection | 1.53 s | 297 s | 194x |
+| Analogical | 2.40 s | 229 s | 95x |
+| Consolidation | 352 ms | 43.6 s | 124x |
+| Drift detection | 5.84 ms | 68.4 ms | 11.7x |
+
+### Performance Tiers
+
+Queries divide into three tiers at 100K nodes:
+
+- **Interactive (<100 ms):** BM25, hybrid, PageRank, degree, BFS, Dijkstra, belief revision, drift -- suitable for per-query use during conversations
+- **Periodic (1-60 s):** Betweenness centrality, consolidation -- run once per session or on a schedule
+- **Offline (>60 s):** Gap detection, analogical reasoning -- designed for batch analysis of large graphs; both complete in <3s at 10K nodes
+
+### BM25 Index Acceleration
+
+| Graph Size | Fast Path (TermIndex) | Slow Path (full scan) | Speedup |
+|------------|----------------------|-----------------------|---------|
+| 10K nodes | 186 us | 8.59 ms | 46x |
+| 100K nodes | 1.58 ms | 122 ms | 77x |
+
+The inverted index speedup grows with graph size because the fast path cost depends on posting list size (sub-linear in n) while the slow path is always O(n).

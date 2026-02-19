@@ -3,9 +3,11 @@
 use std::io::Write;
 use std::path::Path;
 
+use crate::engine::tokenizer::Tokenizer;
 use crate::graph::MemoryGraph;
+use crate::index::{DocLengths, TermIndex};
 use crate::types::error::AmemResult;
-use crate::types::header::{FileHeader, HEADER_SIZE};
+use crate::types::header::{feature_flags, FileHeader, HEADER_SIZE};
 use crate::types::{Edge, EventType, AMEM_MAGIC, FORMAT_VERSION};
 
 use super::compression::compress_content;
@@ -84,11 +86,18 @@ impl AmemWriter {
         let content_block_offset = edge_table_offset + edge_count * EDGE_RECORD_SIZE;
         let feature_vec_offset = content_block_offset + content_total_size;
 
+        // Compute feature flags: if we have nodes, we build BM25 indexes
+        let mut flags: u32 = 0;
+        if graph.node_count() > 0 {
+            flags |= feature_flags::HAS_TERM_INDEX | feature_flags::HAS_DOC_LENGTHS;
+        }
+
         // Step 4: Write header
         let header = FileHeader {
             magic: AMEM_MAGIC,
             version: FORMAT_VERSION,
             dimension: self.dimension as u32,
+            flags,
             node_count,
             edge_count,
             node_table_offset,
@@ -216,6 +225,23 @@ impl AmemWriter {
                 }
             }
             writer.write_all(&[0x04u8])?;
+            writer.write_all(&(buf.len() as u64).to_le_bytes())?;
+            writer.write_all(&buf)?;
+        }
+
+        // Term Index (tag 0x05) — NEW
+        if graph.node_count() > 0 {
+            let tokenizer = Tokenizer::new();
+            let term_index = TermIndex::build(graph, &tokenizer);
+            let buf = term_index.to_bytes();
+            writer.write_all(&[0x05u8])?;
+            writer.write_all(&(buf.len() as u64).to_le_bytes())?;
+            writer.write_all(&buf)?;
+
+            // Doc Lengths (tag 0x06) — NEW
+            let doc_lengths = DocLengths::build(graph, &tokenizer);
+            let buf = doc_lengths.to_bytes();
+            writer.write_all(&[0x06u8])?;
             writer.write_all(&(buf.len() as u64).to_le_bytes())?;
             writer.write_all(&buf)?;
         }

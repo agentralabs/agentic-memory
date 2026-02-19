@@ -5,6 +5,14 @@ use std::io::{Read, Write};
 use crate::types::error::{AmemError, AmemResult};
 use crate::types::{AMEM_MAGIC, FORMAT_VERSION};
 
+/// Feature flags stored in the header's reserved field at offset 0x0C.
+pub mod feature_flags {
+    /// BM25 term index is present in the index block (tag 0x05).
+    pub const HAS_TERM_INDEX: u32 = 1 << 0;
+    /// Document lengths table is present in the index block (tag 0x06).
+    pub const HAS_DOC_LENGTHS: u32 = 1 << 1;
+}
+
 /// Header of an .amem file. Fixed size: 64 bytes.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FileHeader {
@@ -14,6 +22,9 @@ pub struct FileHeader {
     pub version: u32,
     /// Feature vector dimensionality.
     pub dimension: u32,
+    /// Feature flags bitfield (was _reserved, offset 0x0C).
+    /// Old files have this as 0. New files use feature_flags constants.
+    pub flags: u32,
     /// Total number of nodes in the file.
     pub node_count: u64,
     /// Total number of edges in the file.
@@ -38,6 +49,7 @@ impl FileHeader {
             magic: AMEM_MAGIC,
             version: FORMAT_VERSION,
             dimension,
+            flags: 0,
             node_count: 0,
             edge_count: 0,
             node_table_offset: HEADER_SIZE,
@@ -47,13 +59,18 @@ impl FileHeader {
         }
     }
 
+    /// Check if a feature flag is set.
+    pub fn has_flag(&self, flag: u32) -> bool {
+        self.flags & flag != 0
+    }
+
     /// Write this header to the given writer. Writes exactly 64 bytes.
     ///
     /// Layout (all little-endian):
     /// - 0x00..0x04: magic (4 bytes)
     /// - 0x04..0x08: version (u32, 4 bytes)
     /// - 0x08..0x0C: dimension (u32, 4 bytes)
-    /// - 0x0C..0x10: _reserved (u32, 4 bytes, written as 0)
+    /// - 0x0C..0x10: flags (u32, 4 bytes, feature flags bitfield)
     /// - 0x10..0x18: node_count (u64, 8 bytes)
     /// - 0x18..0x20: edge_count (u64, 8 bytes)
     /// - 0x20..0x28: node_table_offset (u64, 8 bytes)
@@ -65,7 +82,7 @@ impl FileHeader {
         writer.write_all(&self.magic)?;
         writer.write_all(&self.version.to_le_bytes())?;
         writer.write_all(&self.dimension.to_le_bytes())?;
-        writer.write_all(&0u32.to_le_bytes())?; // _reserved
+        writer.write_all(&self.flags.to_le_bytes())?;
         writer.write_all(&self.node_count.to_le_bytes())?;
         writer.write_all(&self.edge_count.to_le_bytes())?;
         writer.write_all(&self.node_table_offset.to_le_bytes())?;
@@ -97,7 +114,7 @@ impl FileHeader {
         }
 
         let dimension = u32::from_le_bytes([buf[8], buf[9], buf[10], buf[11]]);
-        // bytes 12..16 are reserved
+        let flags = u32::from_le_bytes([buf[12], buf[13], buf[14], buf[15]]);
         let node_count = u64::from_le_bytes(buf[16..24].try_into().unwrap());
         let edge_count = u64::from_le_bytes(buf[24..32].try_into().unwrap());
         let node_table_offset = u64::from_le_bytes(buf[32..40].try_into().unwrap());
@@ -109,6 +126,7 @@ impl FileHeader {
             magic,
             version,
             dimension,
+            flags,
             node_count,
             edge_count,
             node_table_offset,

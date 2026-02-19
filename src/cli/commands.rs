@@ -3,7 +3,10 @@
 use std::path::Path;
 
 use crate::engine::{
-    CausalParams, PatternParams, PatternSort, QueryEngine, TraversalParams, WriteEngine,
+    AnalogicalAnchor, AnalogicalParams, BeliefRevisionParams, CausalParams, CentralityAlgorithm,
+    CentralityParams, ConsolidationOp, ConsolidationParams, DriftParams, GapDetectionParams,
+    GapSeverity, HybridSearchParams, PatternParams, PatternSort, QueryEngine, ShortestPathParams,
+    TextSearchParams, TraversalParams, WriteEngine,
 };
 use crate::format::{AmemReader, AmemWriter};
 use crate::graph::traversal::TraversalDirection;
@@ -766,4 +769,903 @@ fn format_timestamp(micros: u64) -> String {
         Some(dt) => dt.format("%Y-%m-%d %H:%M:%S UTC").to_string(),
         None => format!("{} us", micros),
     }
+}
+
+// ==================== New Query Expansion Commands ====================
+
+/// BM25 text search.
+pub fn cmd_text_search(
+    path: &Path,
+    query: &str,
+    event_types: Vec<EventType>,
+    session_ids: Vec<u32>,
+    limit: usize,
+    min_score: f32,
+    json: bool,
+) -> AmemResult<()> {
+    let graph = AmemReader::read_from_file(path)?;
+    let query_engine = QueryEngine::new();
+
+    let start = std::time::Instant::now();
+    let results = query_engine.text_search(
+        &graph,
+        graph.term_index(),
+        graph.doc_lengths(),
+        TextSearchParams {
+            query: query.to_string(),
+            max_results: limit,
+            event_types,
+            session_ids,
+            min_score,
+        },
+    )?;
+    let elapsed = start.elapsed();
+
+    if json {
+        let matches: Vec<serde_json::Value> = results
+            .iter()
+            .enumerate()
+            .map(|(i, m)| {
+                let node = graph.get_node(m.node_id);
+                serde_json::json!({
+                    "rank": i + 1,
+                    "node_id": m.node_id,
+                    "score": m.score,
+                    "matched_terms": m.matched_terms,
+                    "type": node.map(|n| n.event_type.name()).unwrap_or("unknown"),
+                    "content": node.map(|n| n.content.as_str()).unwrap_or(""),
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "query": query,
+                "results": matches,
+                "total": results.len(),
+                "elapsed_ms": elapsed.as_secs_f64() * 1000.0,
+            }))
+            .unwrap_or_default()
+        );
+    } else {
+        println!("Text search for {:?} in {}:", query, path.display());
+        for (i, m) in results.iter().enumerate() {
+            if let Some(node) = graph.get_node(m.node_id) {
+                let preview = if node.content.len() > 60 {
+                    format!("{}...", &node.content[..60])
+                } else {
+                    node.content.clone()
+                };
+                println!(
+                    "  #{:<3} Node {} ({}) [score: {:.2}]  {:?}",
+                    i + 1,
+                    m.node_id,
+                    node.event_type.name(),
+                    m.score,
+                    preview
+                );
+            }
+        }
+        println!(
+            "  {} results ({:.1}ms)",
+            results.len(),
+            elapsed.as_secs_f64() * 1000.0
+        );
+    }
+    Ok(())
+}
+
+/// Hybrid BM25 + vector search.
+#[allow(clippy::too_many_arguments)]
+pub fn cmd_hybrid_search(
+    path: &Path,
+    query: &str,
+    text_weight: f32,
+    vec_weight: f32,
+    limit: usize,
+    event_types: Vec<EventType>,
+    json: bool,
+) -> AmemResult<()> {
+    let graph = AmemReader::read_from_file(path)?;
+    let query_engine = QueryEngine::new();
+
+    let results = query_engine.hybrid_search(
+        &graph,
+        graph.term_index(),
+        graph.doc_lengths(),
+        HybridSearchParams {
+            query_text: query.to_string(),
+            query_vec: None,
+            max_results: limit,
+            event_types,
+            text_weight,
+            vector_weight: vec_weight,
+            rrf_k: 60,
+        },
+    )?;
+
+    if json {
+        let matches: Vec<serde_json::Value> = results
+            .iter()
+            .enumerate()
+            .map(|(i, m)| {
+                let node = graph.get_node(m.node_id);
+                serde_json::json!({
+                    "rank": i + 1,
+                    "node_id": m.node_id,
+                    "combined_score": m.combined_score,
+                    "text_rank": m.text_rank,
+                    "vector_rank": m.vector_rank,
+                    "text_score": m.text_score,
+                    "vector_similarity": m.vector_similarity,
+                    "type": node.map(|n| n.event_type.name()).unwrap_or("unknown"),
+                    "content": node.map(|n| n.content.as_str()).unwrap_or(""),
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "query": query,
+                "results": matches,
+                "total": results.len(),
+            }))
+            .unwrap_or_default()
+        );
+    } else {
+        println!("Hybrid search for {:?}:", query);
+        for (i, m) in results.iter().enumerate() {
+            if let Some(node) = graph.get_node(m.node_id) {
+                let preview = if node.content.len() > 60 {
+                    format!("{}...", &node.content[..60])
+                } else {
+                    node.content.clone()
+                };
+                println!(
+                    "  #{:<3} Node {} ({}) [score: {:.4}]  {:?}",
+                    i + 1,
+                    m.node_id,
+                    node.event_type.name(),
+                    m.combined_score,
+                    preview
+                );
+            }
+        }
+        println!("  {} results", results.len());
+    }
+    Ok(())
+}
+
+/// Centrality analysis.
+#[allow(clippy::too_many_arguments)]
+pub fn cmd_centrality(
+    path: &Path,
+    algorithm: &str,
+    damping: f32,
+    edge_types: Vec<EdgeType>,
+    event_types: Vec<EventType>,
+    limit: usize,
+    iterations: u32,
+    json: bool,
+) -> AmemResult<()> {
+    let graph = AmemReader::read_from_file(path)?;
+    let query_engine = QueryEngine::new();
+
+    let algo = match algorithm {
+        "degree" => CentralityAlgorithm::Degree,
+        "betweenness" => CentralityAlgorithm::Betweenness,
+        _ => CentralityAlgorithm::PageRank { damping },
+    };
+
+    let result = query_engine.centrality(
+        &graph,
+        CentralityParams {
+            algorithm: algo,
+            max_iterations: iterations,
+            tolerance: 1e-6,
+            top_k: limit,
+            event_types,
+            edge_types,
+        },
+    )?;
+
+    if json {
+        let scores: Vec<serde_json::Value> = result
+            .scores
+            .iter()
+            .enumerate()
+            .map(|(i, (id, score))| {
+                let node = graph.get_node(*id);
+                serde_json::json!({
+                    "rank": i + 1,
+                    "node_id": id,
+                    "score": score,
+                    "type": node.map(|n| n.event_type.name()).unwrap_or("unknown"),
+                    "content": node.map(|n| n.content.as_str()).unwrap_or(""),
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "algorithm": algorithm,
+                "converged": result.converged,
+                "iterations": result.iterations,
+                "scores": scores,
+            }))
+            .unwrap_or_default()
+        );
+    } else {
+        let algo_name = match algorithm {
+            "degree" => "Degree",
+            "betweenness" => "Betweenness",
+            _ => "PageRank",
+        };
+        println!(
+            "{} centrality (converged: {}, iterations: {}):",
+            algo_name, result.converged, result.iterations
+        );
+        for (i, (id, score)) in result.scores.iter().enumerate() {
+            if let Some(node) = graph.get_node(*id) {
+                let preview = if node.content.len() > 50 {
+                    format!("{}...", &node.content[..50])
+                } else {
+                    node.content.clone()
+                };
+                println!(
+                    "  #{:<3} Node {} ({}) [score: {:.6}]  {:?}",
+                    i + 1,
+                    id,
+                    node.event_type.name(),
+                    score,
+                    preview
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Shortest path.
+#[allow(clippy::too_many_arguments)]
+pub fn cmd_path(
+    path: &Path,
+    source_id: u64,
+    target_id: u64,
+    edge_types: Vec<EdgeType>,
+    direction: TraversalDirection,
+    max_depth: u32,
+    weighted: bool,
+    json: bool,
+) -> AmemResult<()> {
+    let graph = AmemReader::read_from_file(path)?;
+    let query_engine = QueryEngine::new();
+
+    let result = query_engine.shortest_path(
+        &graph,
+        ShortestPathParams {
+            source_id,
+            target_id,
+            edge_types,
+            direction,
+            max_depth,
+            weighted,
+        },
+    )?;
+
+    if json {
+        let path_info: Vec<serde_json::Value> = result
+            .path
+            .iter()
+            .map(|&id| {
+                let node = graph.get_node(id);
+                serde_json::json!({
+                    "node_id": id,
+                    "type": node.map(|n| n.event_type.name()).unwrap_or("unknown"),
+                    "content": node.map(|n| n.content.as_str()).unwrap_or(""),
+                })
+            })
+            .collect();
+        let edges_info: Vec<serde_json::Value> = result
+            .edges
+            .iter()
+            .map(|e| {
+                serde_json::json!({
+                    "source_id": e.source_id,
+                    "target_id": e.target_id,
+                    "edge_type": e.edge_type.name(),
+                    "weight": e.weight,
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "found": result.found,
+                "cost": result.cost,
+                "path": path_info,
+                "edges": edges_info,
+            }))
+            .unwrap_or_default()
+        );
+    } else if result.found {
+        println!(
+            "Path from node {} to node {} ({} hops, cost: {:.2}):",
+            source_id,
+            target_id,
+            result.path.len().saturating_sub(1),
+            result.cost
+        );
+        // Print path as chain
+        let mut parts: Vec<String> = Vec::new();
+        for (i, &id) in result.path.iter().enumerate() {
+            if let Some(node) = graph.get_node(id) {
+                let label = format!("Node {} ({})", id, node.event_type.name());
+                if i < result.edges.len() {
+                    parts.push(format!(
+                        "{} --[{}]-->",
+                        label,
+                        result.edges[i].edge_type.name()
+                    ));
+                } else {
+                    parts.push(label);
+                }
+            }
+        }
+        println!("  {}", parts.join(" "));
+    } else {
+        println!(
+            "No path found from node {} to node {}",
+            source_id, target_id
+        );
+    }
+    Ok(())
+}
+
+/// Belief revision.
+pub fn cmd_revise(
+    path: &Path,
+    hypothesis: &str,
+    threshold: f32,
+    max_depth: u32,
+    confidence: f32,
+    json: bool,
+) -> AmemResult<()> {
+    let graph = AmemReader::read_from_file(path)?;
+    let query_engine = QueryEngine::new();
+
+    let report = query_engine.belief_revision(
+        &graph,
+        BeliefRevisionParams {
+            hypothesis: hypothesis.to_string(),
+            hypothesis_vec: None,
+            contradiction_threshold: threshold,
+            max_depth,
+            hypothesis_confidence: confidence,
+        },
+    )?;
+
+    if json {
+        let contradicted: Vec<serde_json::Value> = report
+            .contradicted
+            .iter()
+            .map(|c| {
+                let node = graph.get_node(c.node_id);
+                serde_json::json!({
+                    "node_id": c.node_id,
+                    "strength": c.contradiction_strength,
+                    "reason": c.reason,
+                    "type": node.map(|n| n.event_type.name()).unwrap_or("unknown"),
+                    "content": node.map(|n| n.content.as_str()).unwrap_or(""),
+                })
+            })
+            .collect();
+        let weakened: Vec<serde_json::Value> = report
+            .weakened
+            .iter()
+            .map(|w| {
+                serde_json::json!({
+                    "node_id": w.node_id,
+                    "original_confidence": w.original_confidence,
+                    "revised_confidence": w.revised_confidence,
+                    "depth": w.depth,
+                })
+            })
+            .collect();
+        let cascade: Vec<serde_json::Value> = report
+            .cascade
+            .iter()
+            .map(|s| {
+                serde_json::json!({
+                    "node_id": s.node_id,
+                    "via_edge": s.via_edge.name(),
+                    "from_node": s.from_node,
+                    "depth": s.depth,
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "hypothesis": hypothesis,
+                "contradicted": contradicted,
+                "weakened": weakened,
+                "invalidated_decisions": report.invalidated_decisions,
+                "total_affected": report.total_affected,
+                "cascade": cascade,
+            }))
+            .unwrap_or_default()
+        );
+    } else {
+        println!("Belief revision: {:?}\n", hypothesis);
+        if report.contradicted.is_empty() {
+            println!("  No contradictions found.");
+        } else {
+            println!("Directly contradicted:");
+            for c in &report.contradicted {
+                if let Some(node) = graph.get_node(c.node_id) {
+                    println!(
+                        "  X Node {} ({}): {:?} [score: {:.2}]",
+                        c.node_id,
+                        node.event_type.name(),
+                        node.content,
+                        c.contradiction_strength
+                    );
+                }
+            }
+        }
+        if !report.weakened.is_empty() {
+            println!("\nCascade effects:");
+            for w in &report.weakened {
+                if let Some(node) = graph.get_node(w.node_id) {
+                    let action = if node.event_type == EventType::Decision {
+                        "INVALIDATED"
+                    } else {
+                        "weakened"
+                    };
+                    println!(
+                        "  ! Node {} ({}): {} ({:.2} -> {:.2})",
+                        w.node_id,
+                        node.event_type.name(),
+                        action,
+                        w.original_confidence,
+                        w.revised_confidence
+                    );
+                }
+            }
+        }
+        println!(
+            "\nTotal affected: {} nodes ({} decisions)",
+            report.total_affected,
+            report.invalidated_decisions.len()
+        );
+    }
+    Ok(())
+}
+
+/// Gap detection.
+#[allow(clippy::too_many_arguments)]
+pub fn cmd_gaps(
+    path: &Path,
+    threshold: f32,
+    min_support: u32,
+    limit: usize,
+    sort: &str,
+    session_range: Option<(u32, u32)>,
+    json: bool,
+) -> AmemResult<()> {
+    let graph = AmemReader::read_from_file(path)?;
+    let query_engine = QueryEngine::new();
+
+    let sort_by = match sort {
+        "recent" => GapSeverity::MostRecent,
+        "confidence" => GapSeverity::LowestConfidence,
+        _ => GapSeverity::HighestImpact,
+    };
+
+    let report = query_engine.gap_detection(
+        &graph,
+        GapDetectionParams {
+            confidence_threshold: threshold,
+            min_support_count: min_support,
+            max_results: limit,
+            session_range,
+            sort_by,
+        },
+    )?;
+
+    if json {
+        let gaps: Vec<serde_json::Value> = report
+            .gaps
+            .iter()
+            .map(|g| {
+                let node = graph.get_node(g.node_id);
+                serde_json::json!({
+                    "node_id": g.node_id,
+                    "gap_type": format!("{:?}", g.gap_type),
+                    "severity": g.severity,
+                    "description": g.description,
+                    "downstream_count": g.downstream_count,
+                    "type": node.map(|n| n.event_type.name()).unwrap_or("unknown"),
+                    "content": node.map(|n| n.content.as_str()).unwrap_or(""),
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "gaps": gaps,
+                "health_score": report.summary.health_score,
+                "summary": {
+                    "total_gaps": report.summary.total_gaps,
+                    "unjustified_decisions": report.summary.unjustified_decisions,
+                    "single_source_inferences": report.summary.single_source_inferences,
+                    "low_confidence_foundations": report.summary.low_confidence_foundations,
+                    "unstable_knowledge": report.summary.unstable_knowledge,
+                    "stale_evidence": report.summary.stale_evidence,
+                }
+            }))
+            .unwrap_or_default()
+        );
+    } else {
+        println!("Reasoning gaps in {}:\n", path.display());
+        for g in &report.gaps {
+            let severity_marker = if g.severity > 0.8 {
+                "CRITICAL"
+            } else if g.severity > 0.5 {
+                "WARNING"
+            } else {
+                "INFO"
+            };
+            if let Some(node) = graph.get_node(g.node_id) {
+                println!(
+                    "  {}: Node {} ({}) -- {:?}",
+                    severity_marker,
+                    g.node_id,
+                    node.event_type.name(),
+                    g.gap_type
+                );
+                let preview = if node.content.len() > 60 {
+                    format!("{}...", &node.content[..60])
+                } else {
+                    node.content.clone()
+                };
+                println!("     {:?}", preview);
+                println!(
+                    "     Severity: {:.2} | {} downstream dependents",
+                    g.severity, g.downstream_count
+                );
+                println!();
+            }
+        }
+        println!(
+            "Health score: {:.2} / 1.00  |  {} gaps found",
+            report.summary.health_score, report.summary.total_gaps
+        );
+    }
+    Ok(())
+}
+
+/// Analogical query.
+#[allow(clippy::too_many_arguments)]
+pub fn cmd_analogy(
+    path: &Path,
+    description: &str,
+    limit: usize,
+    min_similarity: f32,
+    exclude_sessions: Vec<u32>,
+    depth: u32,
+    json: bool,
+) -> AmemResult<()> {
+    let graph = AmemReader::read_from_file(path)?;
+    let query_engine = QueryEngine::new();
+
+    // Find the best matching node to use as anchor
+    let tokenizer = crate::engine::Tokenizer::new();
+    let query_terms: std::collections::HashSet<String> =
+        tokenizer.tokenize(description).into_iter().collect();
+
+    // Find the most relevant node as the anchor center
+    let mut best_id = None;
+    let mut best_score = -1.0f32;
+    for node in graph.nodes() {
+        let node_terms: std::collections::HashSet<String> =
+            tokenizer.tokenize(&node.content).into_iter().collect();
+        let overlap = query_terms.intersection(&node_terms).count();
+        let score = if query_terms.is_empty() {
+            0.0
+        } else {
+            overlap as f32 / query_terms.len() as f32
+        };
+        if score > best_score {
+            best_score = score;
+            best_id = Some(node.id);
+        }
+    }
+
+    let anchor = match best_id {
+        Some(id) => AnalogicalAnchor::Node(id),
+        None => {
+            println!("No matching nodes found for the description.");
+            return Ok(());
+        }
+    };
+
+    let results = query_engine.analogical(
+        &graph,
+        AnalogicalParams {
+            anchor,
+            context_depth: depth,
+            max_results: limit,
+            min_similarity,
+            exclude_sessions,
+        },
+    )?;
+
+    if json {
+        let analogies: Vec<serde_json::Value> = results
+            .iter()
+            .map(|a| {
+                let node = graph.get_node(a.center_id);
+                serde_json::json!({
+                    "center_id": a.center_id,
+                    "structural_similarity": a.structural_similarity,
+                    "content_similarity": a.content_similarity,
+                    "combined_score": a.combined_score,
+                    "subgraph_nodes": a.subgraph_nodes,
+                    "type": node.map(|n| n.event_type.name()).unwrap_or("unknown"),
+                    "content": node.map(|n| n.content.as_str()).unwrap_or(""),
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "description": description,
+                "analogies": analogies,
+            }))
+            .unwrap_or_default()
+        );
+    } else {
+        println!("Analogies for {:?}:\n", description);
+        for (i, a) in results.iter().enumerate() {
+            if let Some(node) = graph.get_node(a.center_id) {
+                println!(
+                    "  #{} Node {} ({}) [combined: {:.3}]",
+                    i + 1,
+                    a.center_id,
+                    node.event_type.name(),
+                    a.combined_score
+                );
+                println!(
+                    "     Structural: {:.3} | Content: {:.3} | Subgraph: {} nodes",
+                    a.structural_similarity,
+                    a.content_similarity,
+                    a.subgraph_nodes.len()
+                );
+            }
+        }
+        if results.is_empty() {
+            println!("  No analogies found.");
+        }
+    }
+    Ok(())
+}
+
+/// Consolidation.
+#[allow(clippy::too_many_arguments)]
+pub fn cmd_consolidate(
+    path: &Path,
+    deduplicate: bool,
+    link_contradictions: bool,
+    promote_inferences: bool,
+    prune: bool,
+    compress_episodes: bool,
+    all: bool,
+    threshold: f32,
+    confirm: bool,
+    backup: Option<std::path::PathBuf>,
+    json: bool,
+) -> AmemResult<()> {
+    let mut graph = AmemReader::read_from_file(path)?;
+    let query_engine = QueryEngine::new();
+
+    let dry_run = !confirm;
+
+    // Build operations list
+    let mut ops = Vec::new();
+    if deduplicate || all {
+        ops.push(ConsolidationOp::DeduplicateFacts { threshold });
+    }
+    if link_contradictions || all {
+        ops.push(ConsolidationOp::LinkContradictions {
+            threshold: threshold.min(0.8),
+        });
+    }
+    if promote_inferences || all {
+        ops.push(ConsolidationOp::PromoteInferences {
+            min_access: 3,
+            min_confidence: 0.8,
+        });
+    }
+    if prune || all {
+        ops.push(ConsolidationOp::PruneOrphans { max_decay: 0.1 });
+    }
+    if compress_episodes || all {
+        ops.push(ConsolidationOp::CompressEpisodes { group_size: 3 });
+    }
+
+    if ops.is_empty() {
+        eprintln!("No operations specified. Use --deduplicate, --link-contradictions, --promote-inferences, --prune, --compress-episodes, or --all");
+        return Ok(());
+    }
+
+    // If not dry-run, create backup first
+    let backup_path = if !dry_run {
+        let bp = backup.unwrap_or_else(|| {
+            let mut p = path.to_path_buf();
+            let name = p
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            p.set_file_name(format!("{}.pre-consolidation.amem", name));
+            p
+        });
+        std::fs::copy(path, &bp)?;
+        Some(bp)
+    } else {
+        None
+    };
+
+    let report = query_engine.consolidate(
+        &mut graph,
+        ConsolidationParams {
+            session_range: None,
+            operations: ops,
+            dry_run,
+            backup_path: backup_path.clone(),
+        },
+    )?;
+
+    // Write back if not dry-run
+    if !dry_run {
+        let writer = AmemWriter::new(graph.dimension());
+        writer.write_to_file(&graph, path)?;
+    }
+
+    if json {
+        let actions: Vec<serde_json::Value> = report
+            .actions
+            .iter()
+            .map(|a| {
+                serde_json::json!({
+                    "operation": a.operation,
+                    "description": a.description,
+                    "affected_nodes": a.affected_nodes,
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "dry_run": dry_run,
+                "deduplicated": report.deduplicated,
+                "contradictions_linked": report.contradictions_linked,
+                "inferences_promoted": report.inferences_promoted,
+                "backup_path": backup_path.map(|p| p.display().to_string()),
+                "actions": actions,
+            }))
+            .unwrap_or_default()
+        );
+    } else {
+        if dry_run {
+            println!("Consolidation DRY RUN (use --confirm to apply):\n");
+        } else {
+            println!("Consolidation applied:\n");
+            if let Some(bp) = &backup_path {
+                println!("  Backup: {}", bp.display());
+            }
+        }
+        for a in &report.actions {
+            println!("  [{}] {}", a.operation, a.description);
+        }
+        println!();
+        println!("  Deduplicated: {}", report.deduplicated);
+        println!("  Contradictions linked: {}", report.contradictions_linked);
+        println!("  Inferences promoted: {}", report.inferences_promoted);
+    }
+    Ok(())
+}
+
+/// Drift detection.
+pub fn cmd_drift(
+    path: &Path,
+    topic: &str,
+    limit: usize,
+    min_relevance: f32,
+    json: bool,
+) -> AmemResult<()> {
+    let graph = AmemReader::read_from_file(path)?;
+    let query_engine = QueryEngine::new();
+
+    let report = query_engine.drift_detection(
+        &graph,
+        DriftParams {
+            topic: topic.to_string(),
+            topic_vec: None,
+            max_results: limit,
+            min_relevance,
+        },
+    )?;
+
+    if json {
+        let timelines: Vec<serde_json::Value> = report
+            .timelines
+            .iter()
+            .map(|t| {
+                let snapshots: Vec<serde_json::Value> = t
+                    .snapshots
+                    .iter()
+                    .map(|s| {
+                        serde_json::json!({
+                            "node_id": s.node_id,
+                            "session_id": s.session_id,
+                            "confidence": s.confidence,
+                            "content_preview": s.content_preview,
+                            "change_type": format!("{:?}", s.change_type),
+                        })
+                    })
+                    .collect();
+                serde_json::json!({
+                    "snapshots": snapshots,
+                    "change_count": t.change_count,
+                    "correction_count": t.correction_count,
+                    "contradiction_count": t.contradiction_count,
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "topic": topic,
+                "timelines": timelines,
+                "stability": report.stability,
+                "likely_to_change": report.likely_to_change,
+            }))
+            .unwrap_or_default()
+        );
+    } else {
+        println!("Drift analysis for {:?}:\n", topic);
+        for (i, t) in report.timelines.iter().enumerate() {
+            println!(
+                "Timeline {} ({} changes, stability: {:.1}):",
+                i + 1,
+                t.change_count,
+                report.stability
+            );
+            for s in &t.snapshots {
+                let change = format!("{:?}", s.change_type).to_uppercase();
+                println!(
+                    "  Session {:>3}: {:<12} {:?}  [{:.2}]",
+                    s.session_id, change, s.content_preview, s.confidence
+                );
+            }
+            println!();
+        }
+        if report.timelines.is_empty() {
+            println!("  No relevant nodes found for this topic.");
+        } else {
+            let prediction = if report.likely_to_change {
+                "LIKELY TO CHANGE"
+            } else {
+                "STABLE"
+            };
+            println!(
+                "Overall stability: {:.2} | Prediction: {}",
+                report.stability, prediction
+            );
+        }
+    }
+    Ok(())
 }
