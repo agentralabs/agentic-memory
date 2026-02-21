@@ -26,6 +26,8 @@ SERVER_KEY="agentic-memory"
 INSTALL_DIR="$HOME/.local/bin"
 VERSION="latest"
 DRY_RUN=false
+CLAUDE_DESKTOP_CONFIGURED=false
+CLAUDE_CODE_CONFIGURED=false
 
 # ── Parse arguments ──────────────────────────────────────────────────
 for arg in "$@"; do
@@ -198,6 +200,7 @@ configure_claude_desktop() {
     echo "  Claude Desktop..."
     merge_config "$config_file"
     echo "  Done"
+    CLAUDE_DESKTOP_CONFIGURED=true
 }
 
 # ── Configure Claude Code ────────────────────────────────────────────
@@ -208,7 +211,26 @@ configure_claude_code() {
         echo "  Claude Code..."
         merge_config "$config_file"
         echo "  Done"
+        CLAUDE_CODE_CONFIGURED=true
     fi
+}
+
+print_client_help() {
+    echo ""
+    echo "MCP client summary:"
+    if [ "$CLAUDE_DESKTOP_CONFIGURED" = true ]; then
+        echo "  - Configured: Claude Desktop"
+    fi
+    if [ "$CLAUDE_CODE_CONFIGURED" = true ]; then
+        echo "  - Configured: Claude Code"
+    fi
+    if [ "$CLAUDE_DESKTOP_CONFIGURED" = false ] && [ "$CLAUDE_CODE_CONFIGURED" = false ]; then
+        echo "  - Claude Desktop/Code not detected (auto-config skipped)"
+    fi
+    echo ""
+    echo "For Codex, Cursor, Windsurf, VS Code, Cline, or any MCP client, add:"
+    echo "  command: ${INSTALL_DIR}/${BINARY_NAME}"
+    echo "  args: [\"serve\"]"
 }
 
 # ── Check PATH ────────────────────────────────────────────────────────
@@ -258,10 +280,11 @@ main() {
     echo "Configuring MCP clients..."
     configure_claude_desktop
     configure_claude_code
+    print_client_help
 
     echo ""
     echo "Done! Memory defaults to ~/.brain.amem"
-    echo "Restart Claude Desktop / Claude Code to activate."
+    echo "Restart any configured MCP client to activate."
 
     check_path
 }
