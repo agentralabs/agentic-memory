@@ -1,0 +1,106 @@
+name: Social Release Broadcast
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  broadcast:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Compose announcement message
+        id: compose
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = context.payload.release
+            const repo = context.repo.repo
+            const owner = context.repo.owner
+            const tag = release?.tag_name ?? "unknown-tag"
+            const name = release?.name || tag
+            const url = release?.html_url || `https://github.com/${owner}/${repo}/releases/tag/${tag}`
+
+            const body = (release?.body || "")
+              .replace(/\r/g, "")
+              .replace(/`/g, "")
+              .replace(/\[(.*?)\]\((.*?)\)/g, "$1")
+              .replace(/#+\s/g, "")
+              .replace(/\n{3,}/g, "\n\n")
+              .trim()
+
+            const excerpt = body.length > 520 ? `${body.slice(0, 520)}...` : body
+            const summary = excerpt || "Release published. See release notes for full details."
+
+            const line1 = `🚀 ${repo} ${tag} is live`
+            const line2 = `Release: ${name}`
+            const line3 = `Notes: ${url}`
+            const line4 = `Highlights: ${summary}`
+            const line5 = `Follow: https://x.com/agentralab · Discord: https://discord.gg/agentralabs`
+
+            core.setOutput('message', [line1, line2, line3, line4, line5].join("\n"))
+            core.setOutput('release_url', url)
+            core.setOutput('tag', tag)
+
+      - name: Post to Discord
+        if: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          MESSAGE: ${{ steps.compose.outputs.message }}
+        run: |
+          jq -n --arg content "$MESSAGE" '{content: $content}' > payload.json
+          curl -sS -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            --data @payload.json
+
+      - name: Post to Social Broadcast Webhook
+        if: ${{ secrets.SOCIAL_BROADCAST_WEBHOOK_URL != '' }}
+        env:
+          WEBHOOK_URL: ${{ secrets.SOCIAL_BROADCAST_WEBHOOK_URL }}
+          MESSAGE: ${{ steps.compose.outputs.message }}
+          RELEASE_URL: ${{ steps.compose.outputs.release_url }}
+          TAG: ${{ steps.compose.outputs.tag }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          jq -n \
+            --arg repo "$REPOSITORY" \
+            --arg tag "$TAG" \
+            --arg url "$RELEASE_URL" \
+            --arg message "$MESSAGE" \
+            '{repository: $repo, tag: $tag, release_url: $url, message: $message}' > payload.json
+          curl -sS -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            --data @payload.json
+
+      - name: Post to X Bridge Webhook
+        if: ${{ secrets.X_BROADCAST_WEBHOOK_URL != '' }}
+        env:
+          WEBHOOK_URL: ${{ secrets.X_BROADCAST_WEBHOOK_URL }}
+          MESSAGE: ${{ steps.compose.outputs.message }}
+          RELEASE_URL: ${{ steps.compose.outputs.release_url }}
+        run: |
+          jq -n \
+            --arg message "$MESSAGE" \
+            --arg url "$RELEASE_URL" \
+            '{platform: "x", message: $message, release_url: $url}' > payload.json
+          curl -sS -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            --data @payload.json
+
+      - name: Summary
+        run: |
+          {
+            echo "## Social Release Broadcast"
+            echo "- Release: ${{ github.event.release.tag_name }}"
+            echo "- Discord posted: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}"
+            echo "- Social webhook posted: ${{ secrets.SOCIAL_BROADCAST_WEBHOOK_URL != '' }}"
+            echo "- X bridge posted: ${{ secrets.X_BROADCAST_WEBHOOK_URL != '' }}"
+            echo ""
+            echo "Required secrets for full broadcast:"
+            echo "- DISCORD_WEBHOOK_URL"
+            echo "- SOCIAL_BROADCAST_WEBHOOK_URL (optional fan-out webhook)"
+            echo "- X_BROADCAST_WEBHOOK_URL (optional X-specific bridge webhook)"
+          } >> "$GITHUB_STEP_SUMMARY"
