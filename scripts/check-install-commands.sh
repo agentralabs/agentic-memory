@@ -6,10 +6,30 @@ fail() {
   exit 1
 }
 
+find_fixed() {
+  local pattern="$1"
+  shift
+  if command -v rg >/dev/null 2>&1; then
+    rg -nF "$pattern" "$@"
+  else
+    grep -R -n -F -- "$pattern" "$@"
+  fi
+}
+
+find_regex() {
+  local pattern="$1"
+  shift
+  if command -v rg >/dev/null 2>&1; then
+    rg -n "$pattern" "$@"
+  else
+    grep -R -n -E -- "$pattern" "$@"
+  fi
+}
+
 assert_contains() {
   local pattern="$1"
   shift
-  if ! rg -nF "$pattern" "$@" >/dev/null; then
+  if ! find_fixed "$pattern" "$@" >/dev/null; then
     fail "Missing required install command: ${pattern}"
   fi
 }
@@ -20,7 +40,7 @@ assert_contains "cargo install agentic-memory agentic-memory-mcp" README.md
 assert_contains "pip install amem-installer && amem-install install --auto" README.md
 
 # Invalid patterns
-if rg -n "curl -fsSL https://agentralabs.tech/install/memory \| sh" README.md docs -g '*.md' >/dev/null; then
+if find_regex "curl -fsSL https://agentralabs.tech/install/memory \| sh" README.md docs >/dev/null; then
   fail "Found invalid shell invocation for memory installer"
 fi
 

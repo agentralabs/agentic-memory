@@ -1,78 +1,69 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="700" height="300" viewBox="0 0 700 300">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 380" role="img" aria-label="Cross-provider memory continuity with AgenticMemory">
   <defs>
-    <marker id="arrowRight" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-      <path d="M0,0 L8,3 L0,6" fill="#94A3B8" opacity="0.6"/>
+    <pattern id="dot-grid" width="18" height="18" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="#c9c6bb"/>
+    </pattern>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#1f1f1f"/>
     </marker>
-    <marker id="arrowDown" markerWidth="6" markerHeight="8" refX="3" refY="8" orient="auto">
-      <path d="M0,0 L3,8 L6,0" fill="#8B5CF6" opacity="0.5"/>
-    </marker>
+    <style><![CDATA[
+      .mono { font-family:'IBM Plex Mono','JetBrains Mono',monospace; }
+      .ink { fill:#111111; }
+      .muted { fill:#6d6a63; }
+      .signal { fill:#ea580c; }
+      .frame { fill:#fffdf7; stroke:#1f1f1f; stroke-width:2; }
+      .provider { fill:#fffdf7; stroke:#1f1f1f; stroke-width:2; }
+    ]]></style>
   </defs>
 
-  <!-- Background -->
-  <rect width="700" height="300" fill="#0F172A" rx="10"/>
+  <rect width="860" height="380" fill="#f2f1ea"/>
+  <rect width="860" height="380" fill="url(#dot-grid)"/>
 
-  <!-- Title -->
-  <text x="350" y="30" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#F8FAFC">Cross-Provider Memory Continuity</text>
+  <line x1="18" y1="28" x2="842" y2="28" stroke="#1f1f1f"/>
+  <text x="18" y="20" class="mono muted" font-size="11" letter-spacing="2">// SECTION: CROSS_PROVIDER_MEMORY_CONTINUITY</text>
+  <text x="842" y="20" class="mono muted" font-size="11" letter-spacing="2" text-anchor="end">TICK:0217</text>
 
-  <!-- Timeline arrow base -->
-  <line x1="50" y1="95" x2="650" y2="95" stroke="#334155" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <rect x="22" y="44" width="816" height="318" class="frame"/>
 
-  <!-- Horizontal flow arrows between providers -->
-  <line x1="235" y1="95" x2="268" y2="95" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrowRight)" opacity="0.6"/>
-  <line x1="445" y1="95" x2="478" y2="95" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrowRight)" opacity="0.6"/>
+  <text x="430" y="73" class="mono ink" font-size="20" font-weight="700" letter-spacing="1.4" text-anchor="middle">Cross-Provider Memory Continuity</text>
 
-  <!-- Provider 1: Claude (orange) -->
-  <rect x="80" y="55" width="155" height="80" rx="8" fill="#1E293B" stroke="#F59E0B" stroke-width="2"/>
-  <text x="157" y="80" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#F59E0B">Claude</text>
-  <text x="157" y="98" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#94A3B8">Sessions 1-10</text>
-  <text x="157" y="116" text-anchor="middle" font-family="monospace" font-size="10" fill="#F59E0B" opacity="0.6">247 nodes added</text>
-  <!-- Small brain icon -->
-  <circle cx="105" cy="78" r="4" fill="#F59E0B" opacity="0.3"/>
+  <line x1="78" y1="120" x2="782" y2="120" stroke="#8c877d" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <line x1="280" y1="120" x2="328" y2="120" stroke="#1f1f1f" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="532" y1="120" x2="580" y2="120" stroke="#1f1f1f" stroke-width="1.6" marker-end="url(#arrow)"/>
 
-  <!-- Provider 2: GPT-4o (green) -->
-  <rect x="275" y="55" width="165" height="80" rx="8" fill="#1E293B" stroke="#22C55E" stroke-width="2"/>
-  <text x="357" y="80" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#22C55E">GPT-4o</text>
-  <text x="357" y="98" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#94A3B8">Sessions 11-20</text>
-  <text x="357" y="116" text-anchor="middle" font-family="monospace" font-size="10" fill="#22C55E" opacity="0.6">183 nodes added</text>
-  <circle cx="300" cy="78" r="4" fill="#22C55E" opacity="0.3"/>
+  <rect x="100" y="74" width="180" height="94" rx="10" class="provider"/>
+  <text x="190" y="103" class="mono signal" font-size="28" text-anchor="middle">.</text>
+  <text x="190" y="111" class="mono ink" font-size="29" text-anchor="middle">Claude</text>
+  <text x="190" y="131" class="mono muted" font-size="12" text-anchor="middle">Sessions 1-10</text>
+  <text x="190" y="151" class="mono signal" font-size="12" text-anchor="middle">247 nodes added</text>
 
-  <!-- Provider 3: Ollama (white) -->
-  <rect x="480" y="55" width="155" height="80" rx="8" fill="#1E293B" stroke="#E2E8F0" stroke-width="2"/>
-  <text x="557" y="80" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#E2E8F0">Ollama</text>
-  <text x="557" y="98" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#94A3B8">Sessions 21-30</text>
-  <text x="557" y="116" text-anchor="middle" font-family="monospace" font-size="10" fill="#E2E8F0" opacity="0.6">92 nodes added</text>
-  <circle cx="505" cy="78" r="4" fill="#E2E8F0" opacity="0.3"/>
+  <rect x="340" y="74" width="180" height="94" rx="10" class="provider"/>
+  <text x="430" y="103" class="mono signal" font-size="28" text-anchor="middle">.</text>
+  <text x="430" y="111" class="mono ink" font-size="29" text-anchor="middle">GPT-4o</text>
+  <text x="430" y="131" class="mono muted" font-size="12" text-anchor="middle">Sessions 11-20</text>
+  <text x="430" y="151" class="mono signal" font-size="12" text-anchor="middle">183 nodes added</text>
 
-  <!-- Vertical connection lines from providers to central file -->
-  <line x1="157" y1="135" x2="157" y2="195" stroke="#F59E0B" stroke-width="1.5" opacity="0.4" stroke-dasharray="3 2"/>
-  <line x1="357" y1="135" x2="357" y2="195" stroke="#22C55E" stroke-width="1.5" opacity="0.4" stroke-dasharray="3 2"/>
-  <line x1="557" y1="135" x2="557" y2="195" stroke="#E2E8F0" stroke-width="1.5" opacity="0.4" stroke-dasharray="3 2"/>
+  <rect x="580" y="74" width="180" height="94" rx="10" class="provider"/>
+  <text x="670" y="103" class="mono signal" font-size="28" text-anchor="middle">.</text>
+  <text x="670" y="111" class="mono ink" font-size="29" text-anchor="middle">Ollama</text>
+  <text x="670" y="131" class="mono muted" font-size="12" text-anchor="middle">Sessions 21-30</text>
+  <text x="670" y="151" class="mono signal" font-size="12" text-anchor="middle">92 nodes added</text>
 
-  <!-- Small connection dots -->
-  <circle cx="157" cy="195" r="3" fill="#F59E0B" opacity="0.5"/>
-  <circle cx="357" cy="195" r="3" fill="#22C55E" opacity="0.5"/>
-  <circle cx="557" cy="195" r="3" fill="#E2E8F0" opacity="0.5"/>
+  <line x1="190" y1="168" x2="190" y2="226" stroke="#8c877d" stroke-width="1.4" stroke-dasharray="3 3"/>
+  <line x1="430" y1="168" x2="430" y2="226" stroke="#8c877d" stroke-width="1.4" stroke-dasharray="3 3"/>
+  <line x1="670" y1="168" x2="670" y2="226" stroke="#8c877d" stroke-width="1.4" stroke-dasharray="3 3"/>
 
-  <!-- Central .amem file box -->
-  <rect x="120" y="195" width="470" height="62" rx="10" fill="#1E293B" stroke="#3B82F6" stroke-width="2"/>
+  <rect x="146" y="226" width="568" height="70" rx="10" fill="#fff8ea" stroke="#1f1f1f" stroke-width="2"/>
+  <circle cx="216" cy="261" r="12" fill="#ece7d8" stroke="#1f1f1f"/>
+  <circle cx="216" cy="261" r="3" fill="#ea580c"/>
 
-  <!-- Glow effect -->
-  <rect x="120" y="195" width="470" height="62" rx="10" fill="#3B82F6" opacity="0.05"/>
+  <text x="248" y="256" class="mono ink" font-size="34">brain.amem</text>
+  <text x="432" y="256" class="mono muted" font-size="20">-- One file. All memory.</text>
+  <text x="248" y="278" class="mono ink" font-size="12">522 nodes</text>
+  <text x="355" y="278" class="mono ink" font-size="12">847 edges</text>
+  <text x="460" y="278" class="mono signal" font-size="12">30 sessions</text>
+  <text x="580" y="278" class="mono muted" font-size="12">41 KB</text>
 
-  <!-- Brain icon in center box -->
-  <circle cx="180" cy="226" r="12" fill="#3B82F6" opacity="0.2"/>
-  <circle cx="180" cy="226" r="8" fill="#3B82F6"/>
-  <circle cx="177" cy="223" r="2" fill="#DBEAFE" opacity="0.5"/>
-  <circle cx="183" cy="228" r="1.5" fill="#DBEAFE" opacity="0.4"/>
-
-  <!-- Central box text -->
-  <text x="210" y="222" font-family="monospace" font-size="16" font-weight="700" fill="#F8FAFC">brain.amem</text>
-  <text x="350" y="222" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#94A3B8">  --  One file. All memory.</text>
-  <text x="210" y="244" font-family="monospace" font-size="11" fill="#3B82F6">522 nodes</text>
-  <text x="305" y="244" font-family="monospace" font-size="11" fill="#8B5CF6">847 edges</text>
-  <text x="400" y="244" font-family="monospace" font-size="11" fill="#14B8A6">30 sessions</text>
-  <text x="510" y="244" font-family="monospace" font-size="11" fill="#F8FAFC" opacity="0.6">41 KB</text>
-
-  <!-- Bottom tagline -->
-  <text x="350" y="285" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#94A3B8">Switch providers anytime. Your agent never forgets.</text>
+  <text x="430" y="326" class="mono muted" font-size="14" text-anchor="middle">Switch providers anytime. Your agent never forgets.</text>
+  <circle cx="816" cy="338" r="4" class="signal"/>
 </svg>
