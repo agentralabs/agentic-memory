@@ -87,7 +87,7 @@ jobs:
           prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, 'beta') }}
 
   publish-crate:
-    name: Publish to crates.io
+    name: Publish to crates.io (core + mcp)
     needs: release
     runs-on: ubuntu-latest
     steps:

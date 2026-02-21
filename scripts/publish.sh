@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== Publishing AgenticMemory to crates.io ==="
+echo "=== Publishing AgenticMemory paired crates to crates.io ==="
 
 # Verify logged in
 cargo login --help > /dev/null
@@ -15,7 +15,7 @@ cargo fmt --check
 # Check clippy
 cargo clippy --workspace -- -D warnings
 
-# Dry run publish (core first, then MCP)
+# Dry run publish (paired crates: core first, then MCP)
 echo "Dry run: agentic-memory"
 cd crates/agentic-memory
 cargo publish --dry-run

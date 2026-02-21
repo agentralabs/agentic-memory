@@ -60,6 +60,7 @@ crates/agentic-memory-mcp/scripts/
 # Claude Code
 .claude/
 .agentra/
+docs/REPO_HYGIENE.md
 
 # Root-level paper files (canonical copies are in paper/)
 /agenticmemory-paper.*
