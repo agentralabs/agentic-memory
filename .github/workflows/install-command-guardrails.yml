@@ -1,0 +1,25 @@
+name: Install Command Guardrails
+
+on:
+  push:
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "scripts/install.sh"
+      - "scripts/check-install-commands.sh"
+      - ".github/workflows/install-command-guardrails.yml"
+  pull_request:
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "scripts/install.sh"
+      - "scripts/check-install-commands.sh"
+      - ".github/workflows/install-command-guardrails.yml"
+
+jobs:
+  validate-install-surface:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run install guardrails
+        run: ./scripts/check-install-commands.sh

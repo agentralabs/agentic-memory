@@ -200,10 +200,11 @@ curl -fsSL https://agentralabs.tech/install/memory | bash
 ```
 
 Downloads a pre-built `agentic-memory-mcp` binary to `~/.local/bin/` and merges the MCP server into your Claude Desktop and Claude Code configs. Memory defaults to `~/.brain.amem`. Requires `curl` and `jq`.
+If release artifacts are not available, the installer automatically falls back to `cargo install --git` source install.
 
 | Channel | Command | Result |
 |:---|:---|:---|
-| GitHub releases (official) | `curl -fsSL https://agentralabs.tech/install/memory \| bash` | Installs release binaries and merges MCP config |
+| GitHub installer (official) | `curl -fsSL https://agentralabs.tech/install/memory \| bash` | Installs release binaries when available, otherwise source fallback; merges MCP config |
 | crates.io paired crates (official) | `cargo install agentic-memory agentic-memory-mcp` | Installs `amem` and `agentic-memory-mcp` |
 | PyPI (SDK + installer) | `pip install agentic-brain` / `pip install amem-installer` | Python SDK and auto-connector tools |
 
