@@ -3,7 +3,7 @@
 ## Quick Install (one-liner)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/agentralabs/agentic-memory/main/scripts/install.sh | bash
+curl -fsSL https://agentralabs.tech/install/memory | bash
 ```
 
 Downloads a pre-built `agentic-memory-mcp` binary, installs to `~/.local/bin/`, and merges the MCP server config into Claude Desktop and Claude Code. Memory defaults to `~/.brain.amem`. Requires `curl` and `jq`.

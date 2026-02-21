@@ -196,14 +196,14 @@ report = brain.drift("preferred language")
 
 **One-liner** (downloads binary + configures Claude):
 ```bash
-curl -fsSL https://raw.githubusercontent.com/agentralabs/agentic-memory/main/scripts/install.sh | bash
+curl -fsSL https://agentralabs.tech/install/memory | bash
 ```
 
 Downloads a pre-built `agentic-memory-mcp` binary to `~/.local/bin/` and merges the MCP server into your Claude Desktop and Claude Code configs. Memory defaults to `~/.brain.amem`. Requires `curl` and `jq`.
 
 | Channel | Command | Result |
 |:---|:---|:---|
-| GitHub releases (official) | `curl -fsSL https://raw.githubusercontent.com/agentralabs/agentic-memory/main/scripts/install.sh \| bash` | Installs release binaries and merges MCP config |
+| GitHub releases (official) | `curl -fsSL https://agentralabs.tech/install/memory \| bash` | Installs release binaries and merges MCP config |
 | crates.io paired crates (official) | `cargo install agentic-memory agentic-memory-mcp` | Installs `amem` and `agentic-memory-mcp` |
 | PyPI (SDK + installer) | `pip install agentic-brain` / `pip install amem-installer` | Python SDK and auto-connector tools |
 

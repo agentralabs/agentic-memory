@@ -4,6 +4,14 @@ Get AgenticMemory running in under 5 minutes. This guide covers installation, cr
 
 ## Installation
 
+### One-line installer (recommended)
+
+```bash
+curl -fsSL https://agentralabs.tech/install/memory | bash
+```
+
+Installs release binaries and configures the MCP bridge for local desktop clients.
+
 ### Python SDK
 
 ```bash

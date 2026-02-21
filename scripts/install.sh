@@ -3,7 +3,7 @@
 # Downloads pre-built binary and configures Claude Desktop/Code.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/agentralabs/agentic-memory/main/scripts/install.sh | bash
+#   curl -fsSL https://agentralabs.tech/install/memory | bash
 #
 # Future (when agentralabs.tech is live):
 #   curl -fsSL https://agentralabs.tech/install/memory | sh
