@@ -1,6 +1,6 @@
 #!/bin/bash
 # AgenticMemory — one-liner install script
-# Downloads pre-built binary and configures Claude Desktop/Code.
+# Downloads pre-built binary and auto-configures detected MCP clients.
 #
 # Usage:
 #   curl -fsSL https://agentralabs.tech/install/memory | bash
@@ -13,7 +13,7 @@
 #
 # What it does:
 #   1. Downloads agentic-memory-mcp binary to ~/.local/bin/
-#   2. MERGES (not overwrites) MCP config into Claude Desktop and Claude Code
+#   2. MERGES (not overwrites) MCP config into detected MCP client configs
 #   3. Leaves all existing MCP servers untouched
 #
 # Requirements: curl, jq
@@ -29,8 +29,11 @@ VERSION="latest"
 PROFILE="${AGENTRA_INSTALL_PROFILE:-desktop}"
 DRY_RUN=false
 BAR_ONLY="${AGENTRA_INSTALL_BAR_ONLY:-1}"
-CLAUDE_DESKTOP_CONFIGURED=false
-CLAUDE_CODE_CONFIGURED=false
+SERVER_ARGS_JSON='["serve"]'
+SERVER_ARGS_TEXT='["serve"]'
+SERVER_CHECK_CMD_SUFFIX=" serve"
+MCP_CONFIGURED_CLIENTS=()
+MCP_SCANNED_CONFIG_FILES=()
 
 # ── Parse arguments ──────────────────────────────────────────────────
 for arg in "$@"; do
@@ -260,14 +263,51 @@ merge_config() {
         echo "    Existing config found, merging..."
         jq --arg key "$SERVER_KEY" \
            --arg cmd "${INSTALL_DIR}/${BINARY_NAME}" \
-           '.mcpServers //= {} | .mcpServers[$key] = {"command": $cmd, "args": ["serve"]}' \
+           --argjson args "$SERVER_ARGS_JSON" \
+           '.mcpServers //= {} | .mcpServers[$key] = {"command": $cmd, "args": $args}' \
            "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
     else
         echo "    Creating new config..."
         jq -n --arg key "$SERVER_KEY" \
               --arg cmd "${INSTALL_DIR}/${BINARY_NAME}" \
-           '{ "mcpServers": { ($key): { "command": $cmd, "args": ["serve"] } } }' \
+              --argjson args "$SERVER_ARGS_JSON" \
+           '{ "mcpServers": { ($key): { "command": $cmd, "args": $args } } }' \
            > "$config_file"
+    fi
+}
+
+record_mcp_client() {
+    local client_name="$1"
+    MCP_CONFIGURED_CLIENTS+=("$client_name")
+}
+
+record_mcp_config_path() {
+    local config_file="$1"
+    MCP_SCANNED_CONFIG_FILES+=("$config_file")
+}
+
+is_known_mcp_config_path() {
+    local config_file="$1"
+    local known
+    for known in "${MCP_SCANNED_CONFIG_FILES[@]}"; do
+        if [ "$known" = "$config_file" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+configure_json_client_if_present() {
+    local client_name="$1"
+    local config_file="$2"
+    local detect_path="${3:-$(dirname "$config_file")}"
+
+    if [ -f "$config_file" ] || [ -d "$detect_path" ]; then
+        echo "  ${client_name}..."
+        merge_config "$config_file"
+        echo "  Done"
+        record_mcp_client "$client_name"
+        record_mcp_config_path "$config_file"
     fi
 }
 
@@ -283,7 +323,8 @@ configure_claude_desktop() {
     echo "  Claude Desktop..."
     merge_config "$config_file"
     echo "  Done"
-    CLAUDE_DESKTOP_CONFIGURED=true
+    record_mcp_client "Claude Desktop"
+    record_mcp_config_path "$config_file"
 }
 
 # ── Configure Claude Code ────────────────────────────────────────────
@@ -294,29 +335,118 @@ configure_claude_code() {
         echo "  Claude Code..."
         merge_config "$config_file"
         echo "  Done"
-        CLAUDE_CODE_CONFIGURED=true
+        record_mcp_client "Claude Code"
+        record_mcp_config_path "$config_file"
     fi
 }
 
+configure_codex() {
+    local codex_home="${CODEX_HOME:-$HOME/.codex}"
+    local codex_config="${codex_home}/config.toml"
+    local codex_cmd_args=("${INSTALL_DIR}/${BINARY_NAME}" "serve")
+
+    if ! command -v codex >/dev/null 2>&1 && [ ! -d "$codex_home" ] && [ ! -f "$codex_config" ]; then
+        return
+    fi
+
+    echo "  Codex..."
+    if [ "$DRY_RUN" = true ]; then
+        echo "    [dry-run] Would run: codex mcp add ${SERVER_KEY} -- ${codex_cmd_args[*]}"
+    elif command -v codex >/dev/null 2>&1; then
+        codex mcp remove "$SERVER_KEY" >/dev/null 2>&1 || true
+        if ! codex mcp add "$SERVER_KEY" -- "${codex_cmd_args[@]}" >/dev/null 2>&1; then
+            echo "    Warning: could not auto-configure Codex via CLI."
+            echo "    Run: codex mcp add ${SERVER_KEY} -- ${codex_cmd_args[*]}"
+            return
+        fi
+    else
+        mkdir -p "$codex_home"
+        if [ ! -f "$codex_config" ]; then
+            touch "$codex_config"
+        fi
+        if ! grep -q "^\[mcp_servers\.${SERVER_KEY}\]$" "$codex_config"; then
+            {
+                echo ""
+                echo "[mcp_servers.${SERVER_KEY}]"
+                echo "command = \"${INSTALL_DIR}/${BINARY_NAME}\""
+                echo "args = ${SERVER_ARGS_JSON}"
+            } >> "$codex_config"
+        fi
+    fi
+    echo "  Done"
+    record_mcp_client "Codex"
+    record_mcp_config_path "$codex_config"
+}
+
+configure_generic_mcp_json_files() {
+    local root
+    local file
+    local roots=(
+        "$HOME/.config"
+        "$HOME/Library/Application Support"
+        "$HOME/.cursor"
+        "$HOME/.windsurf"
+        "$HOME/.codeium"
+        "$HOME/.claude"
+    )
+
+    for root in "${roots[@]}"; do
+        [ -d "$root" ] || continue
+        while IFS= read -r file; do
+            [ -n "$file" ] || continue
+            if is_known_mcp_config_path "$file"; then
+                continue
+            fi
+            echo "  Generic MCP config (${file})..."
+            merge_config "$file"
+            echo "  Done"
+            record_mcp_client "Generic MCP JSON"
+            record_mcp_config_path "$file"
+        done < <(find "$root" -maxdepth 6 -type f \
+            \( -name "mcp.json" -o -name "mcp_config.json" -o -name "claude_desktop_config.json" -o -name "cline_mcp_settings.json" \) \
+            2>/dev/null | sort -u)
+    done
+}
+
+configure_mcp_clients() {
+    configure_claude_desktop
+    configure_claude_code
+    configure_json_client_if_present "Cursor" "$HOME/.cursor/mcp.json" "$HOME/.cursor"
+    configure_json_client_if_present "Windsurf" "$HOME/.windsurf/mcp.json" "$HOME/.windsurf"
+    configure_json_client_if_present "Windsurf (Codeium)" "$HOME/.codeium/windsurf/mcp_config.json" "$HOME/.codeium/windsurf"
+    if [ "$(uname -s)" = "Darwin" ]; then
+        configure_json_client_if_present "VS Code" "$HOME/Library/Application Support/Code/User/mcp.json" "$HOME/Library/Application Support/Code/User"
+        configure_json_client_if_present "VS Code + Cline" "$HOME/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json" "$HOME/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev"
+        configure_json_client_if_present "VSCodium" "$HOME/Library/Application Support/VSCodium/User/mcp.json" "$HOME/Library/Application Support/VSCodium/User"
+    else
+        configure_json_client_if_present "VS Code" "${XDG_CONFIG_HOME:-$HOME/.config}/Code/User/mcp.json" "${XDG_CONFIG_HOME:-$HOME/.config}/Code/User"
+        configure_json_client_if_present "VS Code + Cline" "${XDG_CONFIG_HOME:-$HOME/.config}/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json" "${XDG_CONFIG_HOME:-$HOME/.config}/Code/User/globalStorage/saoudrizwan.claude-dev"
+        configure_json_client_if_present "VSCodium" "${XDG_CONFIG_HOME:-$HOME/.config}/VSCodium/User/mcp.json" "${XDG_CONFIG_HOME:-$HOME/.config}/VSCodium/User"
+    fi
+    configure_codex
+    configure_generic_mcp_json_files
+}
+
 print_client_help() {
+    local client
+    local configured_count="${#MCP_CONFIGURED_CLIENTS[@]}"
+
     echo ""
     echo "MCP client summary:"
-    if [ "$CLAUDE_DESKTOP_CONFIGURED" = true ]; then
-        echo "  - Configured: Claude Desktop"
-    fi
-    if [ "$CLAUDE_CODE_CONFIGURED" = true ]; then
-        echo "  - Configured: Claude Code"
-    fi
-    if [ "$CLAUDE_DESKTOP_CONFIGURED" = false ] && [ "$CLAUDE_CODE_CONFIGURED" = false ]; then
-        echo "  - Claude Desktop/Code not detected (auto-config skipped)"
+    if [ "$configured_count" -gt 0 ]; then
+        for client in "${MCP_CONFIGURED_CLIENTS[@]}"; do
+            echo "  - Configured: ${client}"
+        done
+    else
+        echo "  - No known MCP client config detected (auto-config skipped)"
     fi
     echo ""
-    echo "For Codex, Cursor, Windsurf, VS Code, Cline, or any MCP client, add:"
+    echo "Universal MCP entry (works in any MCP client):"
     echo "  command: ${INSTALL_DIR}/${BINARY_NAME}"
-    echo "  args: [\"serve\"]"
+    echo "  args: ${SERVER_ARGS_TEXT}"
     echo ""
     echo "Quick terminal check:"
-    echo "  ${INSTALL_DIR}/${BINARY_NAME} serve"
+    echo "  ${INSTALL_DIR}/${BINARY_NAME}${SERVER_CHECK_CMD_SUFFIX}"
     echo "  (Ctrl+C to stop after startup check)"
 }
 
@@ -326,17 +456,18 @@ print_profile_help() {
     case "$PROFILE" in
         desktop)
             echo "  - Binary installed"
-            echo "  - Claude Desktop and Claude Code MCP configs merged (when detected)"
+            echo "  - Detected MCP client configs merged (Claude/Codex/Cursor/Windsurf/VS Code/etc.)"
             ;;
         terminal)
             echo "  - Binary installed"
-            echo "  - No desktop config files were changed"
-            echo "  - Use amem directly or wire MCP manually"
+            echo "  - Detected MCP client configs merged (same as desktop profile)"
+            echo "  - Native terminal usage remains available"
             ;;
         server)
             echo "  - Binary installed"
             echo "  - No desktop config files were changed"
             echo "  - Suitable for remote/server hosts"
+            echo "  - Server deployments should enforce auth (token/reverse-proxy/TLS)"
             ;;
     esac
 }
@@ -345,12 +476,27 @@ print_terminal_server_help() {
     echo ""
     echo "Manual MCP config for any client:"
     echo "  command: ${INSTALL_DIR}/${BINARY_NAME}"
-    echo "  args: [\"serve\"]"
+    echo "  args: ${SERVER_ARGS_TEXT}"
     echo ""
     echo "Quick terminal checks:"
     echo "  ${INSTALL_DIR}/amem --help"
-    echo "  ${INSTALL_DIR}/${BINARY_NAME} serve"
+    echo "  ${INSTALL_DIR}/${BINARY_NAME}${SERVER_CHECK_CMD_SUFFIX}"
     echo "  (Ctrl+C to stop after startup check)"
+}
+
+print_post_install_next_steps() {
+    echo "" >&3
+    echo "What happens after installation:" >&3
+    echo "  1. ${SERVER_KEY} was installed as MCP server command: ${INSTALL_DIR}/${BINARY_NAME}" >&3
+    if [ "$PROFILE" = "server" ]; then
+        echo "  2. Configure authentication on your server endpoint before exposing MCP." >&3
+        echo "  3. Connect MCP clients to that secured endpoint, then restart clients." >&3
+        echo "  4. Optional feedback: open https://github.com/agentralabs/agentic-memory/issues" >&3
+    else
+        echo "  2. Restart your MCP client/system so it reloads MCP config." >&3
+        echo "  3. After restart, confirm '${SERVER_KEY}' appears in your MCP server list." >&3
+        echo "  4. Optional feedback: open https://github.com/agentralabs/agentic-memory/issues" >&3
+    fi
 }
 
 # ── Check PATH ────────────────────────────────────────────────────────
@@ -404,11 +550,10 @@ main() {
     fi
 
     set_progress 90 "Applying profile setup"
-    if [ "$PROFILE" = "desktop" ]; then
+    if [ "$PROFILE" = "desktop" ] || [ "$PROFILE" = "terminal" ]; then
         echo ""
         echo "Configuring MCP clients..."
-        configure_claude_desktop
-        configure_claude_code
+        configure_mcp_clients
         print_client_help
     else
         print_terminal_server_help
@@ -419,11 +564,12 @@ main() {
     set_progress 100 "Install complete"
     finish_progress
     echo "Install complete: AgenticMemory (${PROFILE})" >&3
-    echo ""
-    echo "Done! Memory defaults to ~/.brain.amem"
+    echo "" >&3
+    echo "Done! Memory defaults to ~/.brain.amem" >&3
     if [ "$PROFILE" = "desktop" ]; then
-        echo "Restart any configured MCP client to activate."
+        echo "Restart any configured MCP client to activate." >&3
     fi
+    print_post_install_next_steps
 
     check_path
 }

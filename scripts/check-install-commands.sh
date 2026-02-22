@@ -58,8 +58,18 @@ fi
 bash -n scripts/install.sh
 bash scripts/install.sh --dry-run >/dev/null
 bash scripts/install.sh --profile=desktop --dry-run >/dev/null
-bash scripts/install.sh --profile=terminal --dry-run >/dev/null
-bash scripts/install.sh --profile=server --dry-run >/dev/null
+
+terminal_out="$(bash scripts/install.sh --profile=terminal --dry-run 2>&1)"
+echo "$terminal_out" | grep -F "Configuring MCP clients..." >/dev/null \
+  || fail "Terminal profile must auto-configure MCP clients"
+echo "$terminal_out" | grep -F "Detected MCP client configs merged" >/dev/null \
+  || fail "Terminal profile must report universal MCP merge"
+echo "$terminal_out" | grep -F "What happens after installation:" >/dev/null \
+  || fail "Missing post-install guidance block"
+
+server_out="$(bash scripts/install.sh --profile=server --dry-run 2>&1)"
+echo "$server_out" | grep -F "Server deployments should enforce auth" >/dev/null \
+  || fail "Server profile must include auth guidance"
 
 # Public package/repo health (stable URLs for CI)
 http_ok https://raw.githubusercontent.com/agentralabs/agentic-memory/main/scripts/install.sh
