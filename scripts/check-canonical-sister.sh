@@ -90,8 +90,8 @@ assert_contains '## How It Works' README.md
 assert_image_spacing
 
 assert_contains 'MCP client summary:' scripts/install.sh
-assert_contains 'For Codex, Cursor, Windsurf, VS Code, Cline, or any MCP client, add:' scripts/install.sh
+assert_contains 'Universal MCP entry (works in any MCP client):' scripts/install.sh
 assert_contains 'Quick terminal check:' scripts/install.sh
-assert_contains 'echo "  args: [\"serve\"]"' scripts/install.sh
+assert_contains 'echo "  args: ${SERVER_ARGS_TEXT}"' scripts/install.sh
 
 echo "Canonical sister guardrails passed (memory)."
