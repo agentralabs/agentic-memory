@@ -478,6 +478,11 @@ print_terminal_server_help() {
     echo "  command: ${INSTALL_DIR}/${BINARY_NAME}"
     echo "  args: ${SERVER_ARGS_TEXT}"
     echo ""
+    echo "Server authentication setup:"
+    echo "  TOKEN=\$(openssl rand -hex 32)"
+    echo "  export AGENTIC_TOKEN=\"\$TOKEN\""
+    echo "  # Clients must send: Authorization: Bearer \$TOKEN"
+    echo ""
     echo "Quick terminal checks:"
     echo "  ${INSTALL_DIR}/amem --help"
     echo "  ${INSTALL_DIR}/${BINARY_NAME}${SERVER_CHECK_CMD_SUFFIX}"
@@ -489,9 +494,10 @@ print_post_install_next_steps() {
     echo "What happens after installation:" >&3
     echo "  1. ${SERVER_KEY} was installed as MCP server command: ${INSTALL_DIR}/${BINARY_NAME}" >&3
     if [ "$PROFILE" = "server" ]; then
-        echo "  2. Configure authentication on your server endpoint before exposing MCP." >&3
-        echo "  3. Connect MCP clients to that secured endpoint, then restart clients." >&3
-        echo "  4. Optional feedback: open https://github.com/agentralabs/agentic-memory/issues" >&3
+        echo "  2. Generate a token (openssl rand -hex 32) and set AGENTIC_TOKEN on the server." >&3
+        echo "  3. If artifacts were created on another machine, sync .amem/.acb/.avis files to this server." >&3
+        echo "  4. Start MCP with auth, connect clients, then restart clients." >&3
+        echo "  5. Optional feedback: open https://github.com/agentralabs/agentic-memory/issues" >&3
     else
         echo "  2. Restart your MCP client/system so it reloads MCP config." >&3
         echo "  3. After restart, confirm '${SERVER_KEY}' appears in your MCP server list." >&3

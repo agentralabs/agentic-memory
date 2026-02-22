@@ -217,6 +217,17 @@ curl -fsSL https://agentralabs.tech/install/memory/server | bash
 | crates.io paired crates (official) | `cargo install agentic-memory agentic-memory-mcp` | Installs `amem` and `agentic-memory-mcp` |
 | PyPI (SDK + installer) | `pip install agentic-brain` / `pip install amem-installer` | Python SDK and auto-connector tools |
 
+### Server auth and artifact sync
+
+For cloud/server runtime:
+
+```bash
+export AGENTIC_TOKEN="$(openssl rand -hex 32)"
+```
+
+All MCP clients must send `Authorization: Bearer <same-token>`.
+If `.amem/.acb/.avis` files are on another machine, sync them to the server first.
+
 | Goal | Command |
 |:---|:---|
 | **Just give me memory** | Run the one-liner above |

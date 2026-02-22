@@ -25,6 +25,14 @@ curl -fsSL https://agentralabs.tech/install/memory/terminal | bash
 curl -fsSL https://agentralabs.tech/install/memory/server | bash
 ```
 
+For server mode:
+
+```bash
+export AGENTIC_TOKEN="$(openssl rand -hex 32)"
+```
+
+Cloud/server runtime cannot read laptop files directly. Sync `.amem/.acb/.avis` artifacts to server storage first.
+
 ### Python SDK
 
 ```bash

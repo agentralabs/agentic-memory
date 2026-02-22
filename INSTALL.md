@@ -21,6 +21,17 @@ curl -fsSL https://agentralabs.tech/install/memory/terminal | bash
 curl -fsSL https://agentralabs.tech/install/memory/server | bash
 ```
 
+### Server auth and artifact sync
+
+Cloud/server runtime cannot read files from your laptop directly.
+
+```bash
+export AGENTIC_TOKEN="$(openssl rand -hex 32)"
+```
+
+All MCP clients must send `Authorization: Bearer <same-token>`.
+If `.amem/.acb/.avis` artifacts were created elsewhere, sync them to the server first.
+
 ---
 
 ## 1. Python SDK (recommended for most users)

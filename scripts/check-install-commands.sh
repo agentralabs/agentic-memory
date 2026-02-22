@@ -70,6 +70,8 @@ echo "$terminal_out" | grep -F "What happens after installation:" >/dev/null \
 server_out="$(bash scripts/install.sh --profile=server --dry-run 2>&1)"
 echo "$server_out" | grep -F "Server deployments should enforce auth" >/dev/null \
   || fail "Server profile must include auth guidance"
+echo "$server_out" | grep -F 'TOKEN=$(openssl rand -hex 32)' >/dev/null \
+  || fail "Server profile must include token generation guidance"
 
 # Public package/repo health (stable URLs for CI)
 http_ok https://raw.githubusercontent.com/agentralabs/agentic-memory/main/scripts/install.sh
