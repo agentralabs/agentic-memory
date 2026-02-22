@@ -25,11 +25,13 @@ REPO="agentralabs/agentic-memory"
 BINARY_NAME="agentic-memory-mcp"
 SERVER_KEY="agentic-memory"
 INSTALL_DIR="$HOME/.local/bin"
+INSTALL_DIR_EXPLICIT=false
 VERSION="latest"
 PROFILE="${AGENTRA_INSTALL_PROFILE:-desktop}"
 DRY_RUN=false
 BAR_ONLY="${AGENTRA_INSTALL_BAR_ONLY:-1}"
 MCP_ENTRYPOINT=""
+HOST_OS=""
 SERVER_ARGS_JSON='["serve"]'
 SERVER_ARGS_TEXT='["serve"]'
 SERVER_CHECK_CMD_SUFFIX=" serve"
@@ -37,15 +39,45 @@ MCP_CONFIGURED_CLIENTS=()
 MCP_SCANNED_CONFIG_FILES=()
 
 # ── Parse arguments ──────────────────────────────────────────────────
-for arg in "$@"; do
-    case "$arg" in
-        --version=*) VERSION="${arg#*=}" ;;
-        --dir=*)     INSTALL_DIR="${arg#*=}" ;;
-        --profile=*) PROFILE="${arg#*=}" ;;
-        --dry-run)   DRY_RUN=true ;;
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --version=*)
+            VERSION="${1#*=}"
+            shift
+            ;;
+        --version)
+            VERSION="${2:-}"
+            shift 2
+            ;;
+        --dir=*)
+            INSTALL_DIR="${1#*=}"
+            INSTALL_DIR_EXPLICIT=true
+            shift
+            ;;
+        --dir)
+            INSTALL_DIR="${2:-}"
+            INSTALL_DIR_EXPLICIT=true
+            shift 2
+            ;;
+        --profile=*)
+            PROFILE="${1#*=}"
+            shift
+            ;;
+        --profile)
+            PROFILE="${2:-}"
+            shift 2
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
         --help|-h)
-            echo "Usage: install.sh [--version=X.Y.Z] [--dir=/path] [--profile=desktop|terminal|server] [--dry-run]"
+            echo "Usage: install.sh [--version X.Y.Z|--version=X.Y.Z] [--dir /path|--dir=/path] [--profile desktop|terminal|server|--profile=desktop|terminal|server] [--dry-run]"
             exit 0
+            ;;
+        *)
+            echo "Error: unknown option '$1'" >&2
+            exit 1
             ;;
     esac
 done
@@ -136,6 +168,7 @@ detect_platform() {
     case "$os" in
         darwin) os="darwin" ;;
         linux)  os="linux" ;;
+        msys*|mingw*|cygwin*|windows_nt) os="windows" ;;
         *)      echo "Error: Unsupported OS: $os" >&2; exit 1 ;;
     esac
 
@@ -145,20 +178,21 @@ detect_platform() {
         *)             echo "Error: Unsupported architecture: $arch" >&2; exit 1 ;;
     esac
 
+    HOST_OS="$os"
     echo "${os}-${arch}"
 }
 
 # ── Check dependencies ────────────────────────────────────────────────
 check_deps() {
-    for cmd in curl jq; do
-        if ! command -v "$cmd" &>/dev/null; then
-            echo "Error: '$cmd' is required but not installed." >&2
-            if [ "$cmd" = "jq" ]; then
-                echo "  Install: brew install jq  (macOS) or apt install jq (Linux)" >&2
-            fi
-            exit 1
-        fi
-    done
+    if ! command -v curl &>/dev/null; then
+        echo "Error: 'curl' is required but not installed." >&2
+        exit 1
+    fi
+    if ! command -v jq &>/dev/null && ! command -v python3 &>/dev/null; then
+        echo "Error: JSON merge requires 'jq' or 'python3'." >&2
+        echo "  Install jq (preferred) or python3, then rerun." >&2
+        exit 1
+    fi
 }
 
 # ── Get latest release tag (empty when unavailable) ──────────────────
@@ -284,12 +318,14 @@ find_memory() {
 args=("\$@")
 has_memory=0
 has_command=0
+serve_requested=0
 
 for arg in "\${args[@]}"; do
     case "\$arg" in
         -h|--help|-V|--version) has_command=1 ;;
         -m|--memory|--memory=*) has_memory=1 ;;
-        serve|validate|info|delete|export|compact|stats|help) has_command=1 ;;
+        serve) has_command=1; serve_requested=1 ;;
+        validate|info|delete|export|compact|stats|help) has_command=1 ;;
     esac
 done
 
@@ -301,12 +337,57 @@ if [ "\$has_memory" -eq 0 ]; then
 fi
 
 if [ "\$has_command" -eq 0 ]; then
+    serve_requested=1
     args+=("serve")
+fi
+
+if [ "\$serve_requested" -eq 1 ]; then
+    if [ "\${AGENTRA_RUNTIME_MODE:-}" = "server" ] || [ "\${AGENTRA_SERVER:-}" = "1" ] || [ "\${AGENTRA_INSTALL_PROFILE:-}" = "server" ]; then
+        if [ -z "\${AGENTIC_TOKEN:-}" ] && [ -z "\${AGENTIC_TOKEN_FILE:-}" ] && [ -z "\${AGENTRA_AUTH_TOKEN_FILE:-}" ]; then
+            echo "Error: server mode requires AGENTIC_TOKEN or AGENTIC_TOKEN_FILE." >&2
+            exit 2
+        fi
+    fi
 fi
 
 exec "\$BIN" "\${args[@]}"
 EOF
     chmod +x "${MCP_ENTRYPOINT}"
+}
+
+merge_config_with_python() {
+    local config_file="$1"
+    python3 - "$config_file" "$SERVER_KEY" "$MCP_ENTRYPOINT" "$SERVER_ARGS_JSON" <<'PY'
+import json
+import os
+import sys
+
+path, key, command, args_json = sys.argv[1:]
+args = json.loads(args_json)
+cfg = {}
+
+if os.path.exists(path) and os.path.getsize(path) > 0:
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            loaded = json.load(handle)
+        if isinstance(loaded, dict):
+            cfg = loaded
+    except Exception:
+        cfg = {}
+
+mcp = cfg.get("mcpServers")
+if not isinstance(mcp, dict):
+    mcp = {}
+cfg["mcpServers"] = mcp
+mcp[key] = {"command": command, "args": args}
+
+os.makedirs(os.path.dirname(path), exist_ok=True)
+tmp = f"{path}.tmp"
+with open(tmp, "w", encoding="utf-8") as handle:
+    json.dump(cfg, handle, indent=2)
+    handle.write("\n")
+os.replace(tmp, path)
+PY
 }
 
 # ── Merge MCP server into a config file ───────────────────────────────
@@ -323,20 +404,25 @@ merge_config() {
 
     mkdir -p "$config_dir"
 
-    if [ -f "$config_file" ] && [ -s "$config_file" ]; then
-        echo "    Existing config found, merging..."
-        jq --arg key "$SERVER_KEY" \
-           --arg cmd "${MCP_ENTRYPOINT}" \
-           --argjson args "$SERVER_ARGS_JSON" \
-           '.mcpServers //= {} | .mcpServers[$key] = {"command": $cmd, "args": $args}' \
-           "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
+    if command -v jq >/dev/null 2>&1; then
+        if [ -f "$config_file" ] && [ -s "$config_file" ]; then
+            echo "    Existing config found, merging..."
+            jq --arg key "$SERVER_KEY" \
+               --arg cmd "${MCP_ENTRYPOINT}" \
+               --argjson args "$SERVER_ARGS_JSON" \
+               '.mcpServers //= {} | .mcpServers[$key] = {"command": $cmd, "args": $args}' \
+               "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
+        else
+            echo "    Creating new config..."
+            jq -n --arg key "$SERVER_KEY" \
+                  --arg cmd "${MCP_ENTRYPOINT}" \
+                  --argjson args "$SERVER_ARGS_JSON" \
+               '{ "mcpServers": { ($key): { "command": $cmd, "args": $args } } }' \
+               > "$config_file"
+        fi
     else
-        echo "    Creating new config..."
-        jq -n --arg key "$SERVER_KEY" \
-              --arg cmd "${MCP_ENTRYPOINT}" \
-              --argjson args "$SERVER_ARGS_JSON" \
-           '{ "mcpServers": { ($key): { "command": $cmd, "args": $args } } }' \
-           > "$config_file"
+        echo "    Merging with python3 fallback..."
+        merge_config_with_python "$config_file"
     fi
 }
 
@@ -404,9 +490,11 @@ configure_json_client_if_present() {
 # ── Configure Claude Desktop ─────────────────────────────────────────
 configure_claude_desktop() {
     local config_file
-    case "$(uname -s)" in
+    case "${HOST_OS}" in
         Darwin) config_file="$HOME/Library/Application Support/Claude/claude_desktop_config.json" ;;
-        Linux)  config_file="${XDG_CONFIG_HOME:-$HOME/.config}/Claude/claude_desktop_config.json" ;;
+        darwin) config_file="$HOME/Library/Application Support/Claude/claude_desktop_config.json" ;;
+        Linux|linux)  config_file="${XDG_CONFIG_HOME:-$HOME/.config}/Claude/claude_desktop_config.json" ;;
+        windows) config_file="${APPDATA:-$HOME/AppData/Roaming}/Claude/claude_desktop_config.json" ;;
         *)      return ;;
     esac
 
@@ -467,6 +555,8 @@ configure_generic_mcp_json_files() {
     local roots=(
         "$HOME/.config"
         "$HOME/Library/Application Support"
+        "${APPDATA:-$HOME/AppData/Roaming}"
+        "${LOCALAPPDATA:-$HOME/AppData/Local}"
         "$HOME/.cursor"
         "$HOME/.windsurf"
         "$HOME/.codeium"
@@ -497,10 +587,16 @@ configure_mcp_clients() {
     configure_json_client_if_present "Cursor" "$HOME/.cursor/mcp.json" "$HOME/.cursor"
     configure_json_client_if_present "Windsurf" "$HOME/.windsurf/mcp.json" "$HOME/.windsurf"
     configure_json_client_if_present "Windsurf (Codeium)" "$HOME/.codeium/windsurf/mcp_config.json" "$HOME/.codeium/windsurf"
-    if [ "$(uname -s)" = "Darwin" ]; then
+    if [ "${HOST_OS}" = "darwin" ]; then
         configure_json_client_if_present "VS Code" "$HOME/Library/Application Support/Code/User/mcp.json" "$HOME/Library/Application Support/Code/User"
         configure_json_client_if_present "VS Code + Cline" "$HOME/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json" "$HOME/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev"
         configure_json_client_if_present "VSCodium" "$HOME/Library/Application Support/VSCodium/User/mcp.json" "$HOME/Library/Application Support/VSCodium/User"
+    elif [ "${HOST_OS}" = "windows" ]; then
+        configure_json_client_if_present "Cursor" "${APPDATA:-$HOME/AppData/Roaming}/Cursor/User/mcp.json" "${APPDATA:-$HOME/AppData/Roaming}/Cursor/User"
+        configure_json_client_if_present "Windsurf" "${APPDATA:-$HOME/AppData/Roaming}/Windsurf/User/mcp.json" "${APPDATA:-$HOME/AppData/Roaming}/Windsurf/User"
+        configure_json_client_if_present "VS Code" "${APPDATA:-$HOME/AppData/Roaming}/Code/User/mcp.json" "${APPDATA:-$HOME/AppData/Roaming}/Code/User"
+        configure_json_client_if_present "VS Code + Cline" "${APPDATA:-$HOME/AppData/Roaming}/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json" "${APPDATA:-$HOME/AppData/Roaming}/Code/User/globalStorage/saoudrizwan.claude-dev"
+        configure_json_client_if_present "VSCodium" "${APPDATA:-$HOME/AppData/Roaming}/VSCodium/User/mcp.json" "${APPDATA:-$HOME/AppData/Roaming}/VSCodium/User"
     else
         configure_json_client_if_present "VS Code" "${XDG_CONFIG_HOME:-$HOME/.config}/Code/User/mcp.json" "${XDG_CONFIG_HOME:-$HOME/.config}/Code/User"
         configure_json_client_if_present "VS Code + Cline" "${XDG_CONFIG_HOME:-$HOME/.config}/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json" "${XDG_CONFIG_HOME:-$HOME/.config}/Code/User/globalStorage/saoudrizwan.claude-dev"
@@ -594,9 +690,9 @@ check_path() {
     if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
         echo ""
         echo "Note: Add ${INSTALL_DIR} to your PATH if not already:"
-        echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+        echo "  export PATH=\"${INSTALL_DIR}:\$PATH\""
         echo ""
-        echo "Add this line to your ~/.zshrc or ~/.bashrc to make it permanent."
+        echo "Add this line to your shell profile to make it permanent."
     fi
 }
 
@@ -616,6 +712,11 @@ main() {
     echo "Platform: ${platform}"
     validate_profile
     echo "Profile: ${PROFILE}"
+    if [ "${HOST_OS}" = "windows" ] && [ "$INSTALL_DIR_EXPLICIT" = false ]; then
+        INSTALL_DIR="${HOME}/.agentra/bin"
+    fi
+    MCP_ENTRYPOINT="${INSTALL_DIR}/${BINARY_NAME}-agentra"
+    echo "Install dir: ${INSTALL_DIR}"
 
     set_progress 30 "Resolving release"
     local installed_from_release=false
