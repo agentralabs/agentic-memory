@@ -494,11 +494,17 @@ merge_config() {
     if command -v jq >/dev/null 2>&1; then
         if [ -f "$config_file" ] && [ -s "$config_file" ]; then
             echo "    Existing config found, merging..."
-            jq --arg key "$SERVER_KEY" \
+            if jq --arg key "$SERVER_KEY" \
                --arg cmd "${MCP_ENTRYPOINT}" \
                --argjson args "$SERVER_ARGS_JSON" \
                '.mcpServers //= {} | .mcpServers[$key] = {"command": $cmd, "args": $args}' \
-               "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
+               "$config_file" > "$config_file.tmp"; then
+                mv "$config_file.tmp" "$config_file"
+            else
+                rm -f "$config_file.tmp"
+                echo "    jq merge failed; retrying with python3 fallback..."
+                merge_config_with_python "$config_file"
+            fi
         else
             echo "    Creating new config..."
             jq -n --arg key "$SERVER_KEY" \
