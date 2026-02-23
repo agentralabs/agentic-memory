@@ -51,12 +51,69 @@ pub fn definition() -> ToolDefinition {
             "properties": {
                 "range_a": {
                     "oneOf": [
-                        { "type": "object", "properties": { "type": { "const": "time_window" }, "start": { "type": "integer" }, "end": { "type": "integer" } } },
-                        { "type": "object", "properties": { "type": { "const": "session" }, "session_id": { "type": "integer" } } },
-                        { "type": "object", "properties": { "type": { "const": "sessions" }, "session_ids": { "type": "array" } } }
+                        {
+                            "type": "object",
+                            "properties": {
+                                "type": { "const": "time_window" },
+                                "start": { "type": "integer", "minimum": 0 },
+                                "end": { "type": "integer", "minimum": 0 }
+                            },
+                            "required": ["type", "start", "end"],
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "type": { "const": "session" },
+                                "session_id": { "type": "integer", "minimum": 0 }
+                            },
+                            "required": ["type", "session_id"],
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "type": { "const": "sessions" },
+                                "session_ids": { "type": "array", "items": { "type": "integer", "minimum": 0 } }
+                            },
+                            "required": ["type", "session_ids"],
+                            "additionalProperties": false
+                        }
                     ]
                 },
-                "range_b": { "description": "Same structure as range_a" }
+                "range_b": {
+                    "description": "Same structure as range_a",
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "type": { "const": "time_window" },
+                                "start": { "type": "integer", "minimum": 0 },
+                                "end": { "type": "integer", "minimum": 0 }
+                            },
+                            "required": ["type", "start", "end"],
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "type": { "const": "session" },
+                                "session_id": { "type": "integer", "minimum": 0 }
+                            },
+                            "required": ["type", "session_id"],
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "type": { "const": "sessions" },
+                                "session_ids": { "type": "array", "items": { "type": "integer", "minimum": 0 } }
+                            },
+                            "required": ["type", "session_ids"],
+                            "additionalProperties": false
+                        }
+                    ]
+                }
             },
             "required": ["range_a", "range_b"]
         }),

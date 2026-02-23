@@ -55,7 +55,7 @@ impl EdgeType {
     /// Parse an edge type from a string name.
     pub fn from_name(name: &str) -> Option<Self> {
         match name.to_lowercase().as_str() {
-            "caused_by" | "causedby" => Some(Self::CausedBy),
+            "caused_by" | "causedby" | "derived_from" | "derivedfrom" => Some(Self::CausedBy),
             "supports" => Some(Self::Supports),
             "contradicts" => Some(Self::Contradicts),
             "supersedes" => Some(Self::Supersedes),

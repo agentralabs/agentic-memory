@@ -70,7 +70,7 @@ pub fn definition() -> ToolDefinition {
                             "target_id": { "type": "integer" },
                             "edge_type": {
                                 "type": "string",
-                                "enum": ["caused_by", "supports", "contradicts", "supersedes", "related_to", "part_of", "temporal_next"]
+                                "enum": ["caused_by", "derived_from", "supports", "contradicts", "supersedes", "related_to", "part_of", "temporal_next"]
                             },
                             "weight": { "type": "number", "default": 1.0 }
                         },

@@ -221,6 +221,36 @@ async fn test_memory_add_all_event_types() {
 }
 
 #[tokio::test]
+async fn test_memory_add_accepts_derived_from_alias() {
+    let session = create_test_session();
+    let first = ToolRegistry::call(
+        "memory_add",
+        Some(json!({"event_type": "fact", "content": "source fact"})),
+        &session,
+    )
+    .await
+    .unwrap();
+    let first_text = match &first.content[0] {
+        ToolContent::Text { text } => text,
+        _ => panic!("Expected text"),
+    };
+    let first_parsed: serde_json::Value = serde_json::from_str(first_text).unwrap();
+    let source_id = first_parsed["node_id"].as_u64().unwrap();
+
+    let second = ToolRegistry::call(
+        "memory_add",
+        Some(json!({
+            "event_type": "inference",
+            "content": "derived fact",
+            "edges": [{ "target_id": source_id, "edge_type": "derived_from" }]
+        })),
+        &session,
+    )
+    .await;
+    assert!(second.is_ok());
+}
+
+#[tokio::test]
 async fn test_memory_add_with_confidence_boundaries() {
     let session = create_test_session();
 
@@ -502,20 +532,28 @@ async fn test_memory_similar_missing_query() {
 #[tokio::test]
 async fn test_memory_similar_with_query_text() {
     let session = create_test_session();
-    // query_text without embedding model returns a helpful error (not a crash)
+    ToolRegistry::call(
+        "memory_add",
+        Some(json!({"event_type": "fact", "content": "test memory"})),
+        &session,
+    )
+    .await
+    .unwrap();
+
     let result = ToolRegistry::call(
         "memory_similar",
         Some(json!({"query_text": "test"})),
         &session,
     )
     .await;
-    // Should succeed but return an error message in the content
     assert!(result.is_ok());
     let text = match &result.unwrap().content[0] {
         ToolContent::Text { text } => text.clone(),
         _ => panic!("Expected text"),
     };
-    assert!(text.contains("embedding model"));
+    let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(parsed["mode"], "text_fallback");
+    assert!(parsed["matches"].is_array());
 }
 
 #[tokio::test]

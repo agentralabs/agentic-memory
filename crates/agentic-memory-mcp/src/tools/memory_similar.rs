@@ -6,7 +6,7 @@ use tokio::sync::Mutex;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-use agentic_memory::{EventType, SimilarityParams};
+use agentic_memory::{EventType, SimilarityParams, TextSearchParams};
 
 use crate::session::SessionManager;
 use crate::types::{McpError, McpResult, ToolCallResult, ToolDefinition};
@@ -57,48 +57,79 @@ pub async fn execute(
     let params: SimilarParams =
         serde_json::from_value(args).map_err(|e| McpError::InvalidParams(e.to_string()))?;
 
-    // Need either query_vec or query_text with embeddings
-    let query_vec = if let Some(vec) = params.query_vec {
-        vec
-    } else if params.query_text.is_some() {
-        // Without an embedding model, we can't convert text to vectors.
-        // Return a helpful error.
-        return Ok(ToolCallResult::error(
-            "query_text requires an embedding model. Provide query_vec directly or use memory_query for text-based search.".to_string(),
-        ));
-    } else {
-        return Err(McpError::InvalidParams(
-            "Either query_vec or query_text is required".to_string(),
-        ));
-    };
-
     let event_types: Vec<EventType> = params
         .event_types
         .iter()
         .filter_map(|name| EventType::from_name(name))
         .collect();
 
-    let similarity_params = SimilarityParams {
-        query_vec,
-        top_k: params.top_k,
-        min_similarity: params.min_similarity,
-        event_types,
-        skip_zero_vectors: true,
-    };
-
     let session = session.lock().await;
-    let results = session
-        .query_engine()
-        .similarity(session.graph(), similarity_params)
-        .map_err(|e| McpError::AgenticMemory(format!("Similarity search failed: {e}")))?;
 
-    let matches: Vec<Value> = results
+    if let Some(query_vec) = params.query_vec {
+        let similarity_params = SimilarityParams {
+            query_vec,
+            top_k: params.top_k,
+            min_similarity: params.min_similarity,
+            event_types,
+            skip_zero_vectors: true,
+        };
+
+        let results = session
+            .query_engine()
+            .similarity(session.graph(), similarity_params)
+            .map_err(|e| McpError::AgenticMemory(format!("Similarity search failed: {e}")))?;
+
+        let matches: Vec<Value> = results
+            .iter()
+            .filter_map(|m| {
+                session.graph().get_node(m.node_id).map(|node| {
+                    json!({
+                        "node_id": m.node_id,
+                        "similarity": m.similarity,
+                        "event_type": node.event_type.name(),
+                        "content": node.content,
+                        "confidence": node.confidence,
+                    })
+                })
+            })
+            .collect();
+
+        return Ok(ToolCallResult::json(&json!({
+            "mode": "vector",
+            "count": matches.len(),
+            "matches": matches,
+        })));
+    }
+
+    let query_text = params.query_text.ok_or_else(|| {
+        McpError::InvalidParams("Either query_vec or query_text is required".to_string())
+    })?;
+
+    let text_results = session
+        .query_engine()
+        .text_search(
+            session.graph(),
+            None,
+            None,
+            TextSearchParams {
+                query: query_text,
+                max_results: params.top_k,
+                event_types,
+                session_ids: Vec::new(),
+                min_score: 0.0,
+            },
+        )
+        .map_err(|e| McpError::AgenticMemory(format!("Text similarity fallback failed: {e}")))?;
+
+    let matches: Vec<Value> = text_results
         .iter()
         .filter_map(|m| {
             session.graph().get_node(m.node_id).map(|node| {
                 json!({
                     "node_id": m.node_id,
-                    "similarity": m.similarity,
+                    "similarity": m.score,
+                    "text_score": m.score,
+                    "matched_terms": m.matched_terms,
                     "event_type": node.event_type.name(),
                     "content": node.content,
                     "confidence": node.confidence,
@@ -108,6 +139,7 @@ pub async fn execute(
         .collect();
 
     Ok(ToolCallResult::json(&json!({
+        "mode": "text_fallback",
         "count": matches.len(),
         "matches": matches,
     })))

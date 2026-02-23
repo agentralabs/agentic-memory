@@ -5,6 +5,14 @@ All notable changes to AgenticMemory will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2026-02-23
+
+### Fixed
+- Added edge alias support for `derived_from` in MCP `memory_add` (mapped to `caused_by`) to improve cross-client compatibility.
+- Enabled `memory_similar` text-only fallback mode when embeddings are not available, removing a major usability gap.
+- Corrected `memory_temporal` MCP schema so `range_a` and `range_b` both strictly expose the typed `RangeSpec` contract.
+- Added regression tests for the new MCP alias and text-fallback behavior.
+
 ## [0.2.4] - 2026-02-23
 
 ### Fixed
