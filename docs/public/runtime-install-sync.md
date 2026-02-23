@@ -36,6 +36,20 @@ Install complete: AgenticMemory (<profile>)
 }
 ```
 
+## Workspace auto-detection behavior
+
+- Installer writes `agentic-memory-mcp-agentra` launcher as MCP entrypoint.
+- Launcher resolves memory artifact in this order:
+1. Explicit override: `AGENTRA_AMEM_PATH` / `AGENTRA_MEMORY_PATH`.
+2. Per-workspace default: `<workspace>/.agentra/<workspace-slug>.amem`.
+3. Existing local fallbacks (`.brain.amem`, `memory.amem`, home defaults).
+- If no file exists yet, launcher routes to per-workspace default path so first run creates and keeps project memory isolated.
+- If your MCP client starts outside the project directory, set:
+
+```bash
+export AGENTRA_WORKSPACE_ROOT="/absolute/path/to/project"
+```
+
 ## Server auth + sync
 
 ```bash

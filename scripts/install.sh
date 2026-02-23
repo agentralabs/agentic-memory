@@ -295,24 +295,90 @@ set -eo pipefail
 
 BIN="${INSTALL_DIR}/${BINARY_NAME}"
 
+pwd_is_project() {
+    [ -d "\$PWD/.git" ] || \
+    [ -f "\$PWD/Cargo.toml" ] || \
+    [ -f "\$PWD/package.json" ] || \
+    [ -f "\$PWD/pyproject.toml" ] || \
+    [ -f "\$PWD/go.mod" ] || \
+    [ -d "\$PWD/src" ]
+}
+
+pwd_contains_projects() {
+    find "\$PWD" -maxdepth 2 -type f \
+        \\( -name 'Cargo.toml' -o -name 'package.json' -o -name 'pyproject.toml' -o -name 'go.mod' \\) \
+        -print -quit 2>/dev/null | grep -q .
+}
+
+resolve_repo_root() {
+    if [ -n "\${AGENTRA_WORKSPACE_ROOT:-}" ] && [ -d "\${AGENTRA_WORKSPACE_ROOT}" ]; then
+        printf '%s' "\${AGENTRA_WORKSPACE_ROOT}"
+        return
+    fi
+    if [ -n "\${AGENTRA_PROJECT_ROOT:-}" ] && [ -d "\${AGENTRA_PROJECT_ROOT}" ]; then
+        printf '%s' "\${AGENTRA_PROJECT_ROOT}"
+        return
+    fi
+    if pwd_is_project || pwd_contains_projects; then
+        printf '%s' "\$PWD"
+        return
+    fi
+    if command -v git >/dev/null 2>&1; then
+        local root
+        root="\$(git rev-parse --show-toplevel 2>/dev/null || true)"
+        if [ -n "\$root" ] && [ -d "\$root" ]; then
+            if [ "\$root" = "\$HOME" ] || [ "\$root" = "\$HOME/Documents" ] || [ "\$root" = "\$HOME/Desktop" ]; then
+                printf '%s' "\$PWD"
+                return
+            fi
+            printf '%s' "\$root"
+            return
+        fi
+    fi
+    printf '%s' "\$PWD"
+}
+
+slugify() {
+    local raw="\$1"
+    local base
+    base="\$(basename "\$raw")"
+    base="\$(printf '%s' "\$base" | tr '[:upper:]' '[:lower:]')"
+    base="\$(printf '%s' "\$base" | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+\$//')"
+    if [ -z "\$base" ]; then
+        base="workspace"
+    fi
+    printf '%s' "\$base"
+}
+
 find_memory() {
     local candidate
     local found=""
+    local repo_root repo_slug
+
+    repo_root="\$(resolve_repo_root)"
+    repo_slug="\$(slugify "\$repo_root")"
 
     for candidate in \
         "\${AGENTRA_AMEM_PATH:-}" \
         "\${AGENTRA_MEMORY_PATH:-}" \
-        "\$HOME/.brain.amem" \
-        "\$HOME/.agentra/memory/default.amem" \
+        "\${repo_root}/.agentra/\${repo_slug}.amem" \
+        "\${repo_root}/.brain.amem" \
         "\$PWD/.brain.amem" \
-        "\$PWD/memory.amem"; do
+        "\$PWD/memory.amem" \
+        "\$HOME/.brain.amem" \
+        "\$HOME/.agentra/memory/default.amem"; do
         if [ -n "\$candidate" ] && [ -f "\$candidate" ]; then
             found="\$candidate"
             break
         fi
     done
 
-    [ -n "\$found" ] && printf '%s' "\$found"
+    if [ -n "\$found" ]; then
+        printf '%s' "\$found"
+        return
+    fi
+    mkdir -p "\${repo_root}/.agentra" >/dev/null 2>&1 || true
+    printf '%s' "\${repo_root}/.agentra/\${repo_slug}.amem"
 }
 
 args=("\$@")
