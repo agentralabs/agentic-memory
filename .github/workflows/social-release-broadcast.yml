@@ -3,6 +3,7 @@ name: Social Release Broadcast
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
