@@ -1,3 +1,7 @@
+---
+status: stable
+---
+
 # Rust API Reference
 
 AgenticMemory is implemented in Rust. This document covers the core library API and the `amem` CLI tool.

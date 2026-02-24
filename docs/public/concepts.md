@@ -1,3 +1,7 @@
+---
+status: stable
+---
+
 # Core Concepts
 
 AgenticMemory models an AI agent's knowledge as a **cognitive graph** -- a directed, weighted graph where nodes represent discrete cognitive events and edges capture the relationships between them. This document explains the foundational ideas behind the system.

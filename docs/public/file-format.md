@@ -1,3 +1,7 @@
+---
+status: stable
+---
+
 # .amem File Format Specification
 
 This document describes the binary layout of `.amem` files -- the on-disk format for AgenticMemory brain data. The format is designed for fast random access, memory-mapped I/O, and compact storage.

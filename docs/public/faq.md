@@ -1,3 +1,7 @@
+---
+status: stable
+---
+
 # Frequently Asked Questions
 
 ## How is this different from a vector database?

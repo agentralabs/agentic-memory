@@ -1,3 +1,7 @@
+---
+status: stable
+---
+
 # Command Surface
 
 Install commands are documented in [Installation](installation.md).

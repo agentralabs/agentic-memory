@@ -1,3 +1,7 @@
+---
+status: stable
+---
+
 # Benchmarks
 
 Performance measurements for AgenticMemory's core operations across various graph sizes. All benchmarks use the Rust engine directly; Python SDK overhead is negligible for I/O-bound operations and adds approximately 5-15 microseconds per FFI call for compute-bound operations.

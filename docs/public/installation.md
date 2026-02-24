@@ -1,3 +1,7 @@
+---
+status: stable
+---
+
 # Installation Guide
 
 ## Quick Install (one-liner)

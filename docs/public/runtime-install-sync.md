@@ -1,3 +1,7 @@
+---
+status: stable
+---
+
 # Runtime, Install Output, and Sync Contract
 
 This page defines expected runtime behavior across installer output, CLI behavior, and web documentation.

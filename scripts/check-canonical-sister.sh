@@ -51,6 +51,23 @@ assert_no_tracked_prefix() {
   fi
 }
 
+assert_frontmatter_status_stable() {
+  local file="$1"
+  assert_file "$file"
+  local status
+  status="$(awk '
+    NR==1 && $0=="---" {fm=1; next}
+    fm && /^status:[[:space:]]*/ {
+      sub(/^status:[[:space:]]*/, "", $0)
+      gsub(/[[:space:]]+/, "", $0)
+      print tolower($0)
+      exit
+    }
+    fm && $0=="---" {exit}
+  ' "$file")"
+  [ "$status" = "stable" ] || fail "Public doc must include frontmatter status: stable ($file)"
+}
+
 assert_image_spacing() {
   local min_gap=10
   local prev=0
@@ -118,6 +135,18 @@ assert_contains 'New sister planning, implementation, and validation must explic
 assert_contains '"key": "memory"' docs/public/sister.manifest.json
 assert_contains '"name": "AgenticMemory"' docs/public/sister.manifest.json
 assert_contains '"page_ids": [' docs/public/sister.manifest.json
+assert_frontmatter_status_stable "docs/public/experience-with-vs-without.md"
+assert_frontmatter_status_stable "docs/public/quickstart.md"
+assert_frontmatter_status_stable "docs/public/installation.md"
+assert_frontmatter_status_stable "docs/public/command-surface.md"
+assert_frontmatter_status_stable "docs/public/runtime-install-sync.md"
+assert_frontmatter_status_stable "docs/public/integration-guide.md"
+assert_frontmatter_status_stable "docs/public/concepts.md"
+assert_frontmatter_status_stable "docs/public/api-reference.md"
+assert_frontmatter_status_stable "docs/public/file-format.md"
+assert_frontmatter_status_stable "docs/public/rust-api.md"
+assert_frontmatter_status_stable "docs/public/benchmarks.md"
+assert_frontmatter_status_stable "docs/public/faq.md"
 
 assert_contains '<img src="assets/github-hero-pane.svg"' README.md
 assert_contains '<img src="assets/github-terminal-pane.svg"' README.md

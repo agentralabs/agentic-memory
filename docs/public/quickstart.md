@@ -1,3 +1,7 @@
+---
+status: stable
+---
+
 # Quickstart
 
 ## 1. Install

@@ -1,3 +1,7 @@
+---
+status: stable
+---
+
 # Integration Guide
 
 This guide covers how to integrate AgenticMemory into various environments: direct Python usage, LLM providers, agent frameworks, AI coding assistants via MCP, and custom provider implementations.
