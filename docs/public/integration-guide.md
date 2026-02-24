@@ -377,6 +377,48 @@ See the [MCP server README](../crates/agentic-memory-mcp/README.md) for the full
 
 ---
 
+## Agentic Flow Examples
+
+Once the MCP server is running, your AI agent has access to memory tools. Here are example prompts and the tool chains they trigger.
+
+### Cross-session continuity
+
+> Why did you recommend Python last week? Walk me through your reasoning.
+
+The agent calls `memory_query` to find the recommendation, then `memory_traverse` with `caused_by` edges to walk backwards through the reasoning chain.
+
+### Correct a past belief
+
+> Actually, the deadline moved to April 15. Update your memory.
+
+The agent calls `memory_correct` to create a new node that supersedes the old deadline fact. The old belief stays visible in the graph with a `supersedes` edge.
+
+### Verify belief currency
+
+> What do you know about our tech stack? Is any of it outdated?
+
+The agent calls `memory_query` filtered by `fact` events, then `memory_quality` to check for stale or low-confidence nodes.
+
+### Trace decision impact
+
+> I stored a decision to use microservices. What other decisions depend on it?
+
+The agent calls `memory_causal` to trace forward from the decision node, finding all downstream decisions and inferences that depend on it.
+
+### Key tools available to your agent
+
+| Tool | What it does |
+|:---|:---|
+| `memory_add` | Store a fact, decision, inference, or correction |
+| `memory_query` | Search memories by type, time, or confidence |
+| `memory_traverse` | Walk edges (caused_by, supports, contradicts) |
+| `memory_correct` | Supersede a past belief with new information |
+| `memory_similar` | Find semantically related memories |
+
+The `.amem` file persists across sessions. Your agent resumes with full context every time.
+
+---
+
 ## Building a Custom LLMProvider
 
 If your LLM is not covered by the built-in providers, implement the `LLMProvider` interface.
