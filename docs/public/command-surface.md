@@ -117,6 +117,7 @@ All tools exposed by the `agentic-memory-mcp` MCP server:
 |------|---------|
 | `session_start` | Start a new interaction session |
 | `session_end` | End a session and optionally create episode summary |
+| `memory_session_resume` | Load context from previous sessions (last summary, recent decisions, key facts) |
 
 ## MCP runtime capture controls
 
