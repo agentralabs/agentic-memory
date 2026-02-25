@@ -560,15 +560,12 @@ impl SessionManager {
             .collect();
 
         // Collect edges where source belongs to our session.
-        let our_node_ids: std::collections::HashSet<u64> =
-            our_nodes.iter().map(|n| n.id).collect();
+        let our_node_ids: std::collections::HashSet<u64> = our_nodes.iter().map(|n| n.id).collect();
         let our_edges: Vec<_> = self
             .graph
             .edges()
             .iter()
-            .filter(|e| {
-                our_node_ids.contains(&e.source_id) || our_node_ids.contains(&e.target_id)
-            })
+            .filter(|e| our_node_ids.contains(&e.source_id) || our_node_ids.contains(&e.target_id))
             .cloned()
             .collect();
 
@@ -585,9 +582,7 @@ impl SessionManager {
             let result = self
                 .write_engine
                 .ingest(&mut self.graph, vec![event], vec![])
-                .map_err(|e| {
-                    McpError::AgenticMemory(format!("Merge node re-add failed: {e}"))
-                })?;
+                .map_err(|e| McpError::AgenticMemory(format!("Merge node re-add failed: {e}")))?;
             if let Some(&new_id) = result.new_node_ids.first() {
                 id_map.insert(node.id, new_id);
             }
@@ -595,8 +590,14 @@ impl SessionManager {
 
         // Re-add our session's edges with remapped IDs.
         for edge in &our_edges {
-            let source = id_map.get(&edge.source_id).copied().unwrap_or(edge.source_id);
-            let target = id_map.get(&edge.target_id).copied().unwrap_or(edge.target_id);
+            let source = id_map
+                .get(&edge.source_id)
+                .copied()
+                .unwrap_or(edge.source_id);
+            let target = id_map
+                .get(&edge.target_id)
+                .copied()
+                .unwrap_or(edge.target_id);
             let new_edge = Edge::new(source, target, edge.edge_type, edge.weight);
             if let Err(e) = self.graph.add_edge(new_edge) {
                 tracing::warn!("Merge edge re-add skipped: {e}");
@@ -1628,10 +1629,7 @@ impl FileLock {
                             .map(|age| age > stale_threshold)
                             .unwrap_or(false);
                         if is_stale {
-                            tracing::warn!(
-                                "Removing stale lock file: {}",
-                                lock_path.display()
-                            );
+                            tracing::warn!("Removing stale lock file: {}", lock_path.display());
                             let _ = std::fs::remove_file(&lock_path);
                             continue;
                         }
@@ -1780,10 +1778,7 @@ mod tests {
 
         // First capture: no predecessor.
         let id1 = manager
-            .capture_tool_call(
-                "memory_query",
-                Some(&json!({"query": "first question"})),
-            )
+            .capture_tool_call("memory_query", Some(&json!({"query": "first question"})))
             .expect("capture")
             .expect("node_id");
 
@@ -1801,15 +1796,9 @@ mod tests {
         assert_eq!(manager.last_temporal_node_id(), Some(id2));
 
         // Verify the TemporalNext edge exists: id1 -> id2.
-        let has_temporal = manager
-            .graph()
-            .edges()
-            .iter()
-            .any(|e| {
-                e.source_id == id1
-                    && e.target_id == id2
-                    && e.edge_type == EdgeType::TemporalNext
-            });
+        let has_temporal = manager.graph().edges().iter().any(|e| {
+            e.source_id == id1 && e.target_id == id2 && e.edge_type == EdgeType::TemporalNext
+        });
         assert!(has_temporal, "Expected TemporalNext edge from id1 to id2");
     }
 
@@ -1821,10 +1810,7 @@ mod tests {
         manager.auto_capture_mode = AutoCaptureMode::Full;
 
         let _id1 = manager
-            .capture_tool_call(
-                "memory_query",
-                Some(&json!({"query": "first"})),
-            )
+            .capture_tool_call("memory_query", Some(&json!({"query": "first"})))
             .expect("capture");
 
         assert!(manager.last_temporal_node_id().is_some());
@@ -1843,10 +1829,7 @@ mod tests {
 
         // Create a chain head via auto-capture.
         let id1 = manager
-            .capture_tool_call(
-                "memory_query",
-                Some(&json!({"query": "something"})),
-            )
+            .capture_tool_call("memory_query", Some(&json!({"query": "something"})))
             .expect("capture")
             .expect("node_id");
 
@@ -1859,15 +1842,9 @@ mod tests {
 
         assert_eq!(manager.last_temporal_node_id(), Some(id2));
 
-        let has_edge = manager
-            .graph()
-            .edges()
-            .iter()
-            .any(|e| {
-                e.source_id == id1
-                    && e.target_id == id2
-                    && e.edge_type == EdgeType::TemporalNext
-            });
+        let has_edge = manager.graph().edges().iter().any(|e| {
+            e.source_id == id1 && e.target_id == id2 && e.edge_type == EdgeType::TemporalNext
+        });
         assert!(has_edge, "memory_add node should be linked into chain");
     }
 }

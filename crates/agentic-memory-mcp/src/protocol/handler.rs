@@ -148,7 +148,10 @@ impl ProtocolHandler {
                     match session.start_session(None) {
                         Ok(sid) => {
                             self.auto_session_started.store(true, Ordering::Relaxed);
-                            tracing::info!("Auto-started session {sid} (mode={:?})", self.memory_mode);
+                            tracing::info!(
+                                "Auto-started session {sid} (mode={:?})",
+                                self.memory_mode
+                            );
                         }
                         Err(e) => {
                             tracing::error!("Failed to auto-start session: {e}");

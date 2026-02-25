@@ -46,7 +46,10 @@ async fn test_conversation_log_basic() {
 
     let parsed = result_json(&result);
     assert!(parsed["node_id"].as_u64().is_some());
-    assert_eq!(parsed["message"], "Conversation logged and linked to temporal chain");
+    assert_eq!(
+        parsed["message"],
+        "Conversation logged and linked to temporal chain"
+    );
 }
 
 #[tokio::test]
