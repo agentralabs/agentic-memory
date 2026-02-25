@@ -4,7 +4,7 @@ status: stable
 
 # Python API Reference
 
-Complete reference for the `agentic_memory` Python package (v0.2.0). Install with `pip install agentic-brain`.
+Complete reference for the `agentic_memory` Python package (v0.3.2). Install with `pip install agentic-brain`.
 
 ## Brain
 
