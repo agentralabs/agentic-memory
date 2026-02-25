@@ -9,7 +9,7 @@ use std::time::{Duration, Instant, SystemTime};
 
 use agentic_memory::{
     AmemReader, AmemWriter, CognitiveEventBuilder, Edge, EdgeType, EventType, MemoryGraph,
-    QueryEngine, WriteEngine,
+    PatternParams, PatternSort, QueryEngine, WriteEngine,
 };
 use serde_json::Value;
 
@@ -507,7 +507,118 @@ impl SessionManager {
 
         tracing::info!("Ended session {session_id}, created episode node {episode_id}");
 
+        // Write auto-context files for next session bootstrap.
+        if let Err(e) = self.write_context_files(summary) {
+            tracing::warn!("Failed to write context files: {e}");
+        }
+
         Ok(episode_id)
+    }
+
+    /// Write session context to file(s) for the next session to bootstrap from.
+    ///
+    /// Writes to:
+    ///   1. `~/.agentic/memory-context.md` (global fallback for any client)
+    ///   2. `.claude/memory-context.md`     (project-scoped for Claude Code)
+    ///
+    /// This solves the bootstrap problem: the next session has context ready
+    /// before the agent even calls any tools.
+    fn write_context_files(&self, session_summary: &str) -> McpResult<()> {
+        let query = self.query_engine();
+        let graph = self.graph();
+
+        // Gather recent decisions.
+        let decisions = query
+            .pattern(
+                graph,
+                PatternParams {
+                    event_types: vec![EventType::Decision],
+                    min_confidence: Some(0.7),
+                    max_confidence: None,
+                    session_ids: vec![],
+                    created_after: None,
+                    created_before: None,
+                    min_decay_score: None,
+                    max_results: 5,
+                    sort_by: PatternSort::MostRecent,
+                },
+            )
+            .unwrap_or_default();
+
+        // Gather recent high-confidence facts.
+        let facts = query
+            .pattern(
+                graph,
+                PatternParams {
+                    event_types: vec![EventType::Fact],
+                    min_confidence: Some(0.8),
+                    max_confidence: None,
+                    session_ids: vec![],
+                    created_after: None,
+                    created_before: None,
+                    min_decay_score: None,
+                    max_results: 5,
+                    sort_by: PatternSort::MostRecent,
+                },
+            )
+            .unwrap_or_default();
+
+        // Build markdown content.
+        let mut md = String::from("# Agent Memory Context\n\n");
+        md.push_str("> Auto-generated on session end. Do not edit.\n\n");
+
+        md.push_str("## Last Session\n\n");
+        md.push_str(session_summary);
+        md.push_str("\n\n");
+
+        if !decisions.is_empty() {
+            md.push_str("## Recent Decisions\n\n");
+            for d in &decisions {
+                md.push_str(&format!("- {}\n", d.content));
+            }
+            md.push('\n');
+        }
+
+        if !facts.is_empty() {
+            md.push_str("## Key Facts\n\n");
+            for f in &facts {
+                md.push_str(&format!("- {}\n", f.content));
+            }
+            md.push('\n');
+        }
+
+        // 1. Write global context file.
+        if let Some(home) = std::env::var_os("HOME") {
+            let global_dir = PathBuf::from(home).join(".agentic");
+            if std::fs::create_dir_all(&global_dir).is_ok() {
+                let global_path = global_dir.join("memory-context.md");
+                if let Err(e) = std::fs::write(&global_path, &md) {
+                    tracing::warn!("Failed to write global context file: {e}");
+                } else {
+                    tracing::info!("Wrote context to {}", global_path.display());
+                }
+            }
+        }
+
+        // 2. Write project-scoped context file (for Claude Code).
+        //    Detect project root by walking up from the .amem file location
+        //    looking for .claude/ directory or .git/.
+        if let Some(amem_dir) = self.file_path.parent() {
+            let project_root = find_project_root(amem_dir);
+            if let Some(root) = project_root {
+                let claude_dir = root.join(".claude");
+                if std::fs::create_dir_all(&claude_dir).is_ok() {
+                    let project_path = claude_dir.join("memory-context.md");
+                    if let Err(e) = std::fs::write(&project_path, &md) {
+                        tracing::warn!("Failed to write project context file: {e}");
+                    } else {
+                        tracing::info!("Wrote context to {}", project_path.display());
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Save the graph to file with file-locking for concurrent session safety.
@@ -1666,6 +1777,22 @@ impl Drop for FileLock {
     fn drop(&mut self) {
         let _ = std::fs::remove_file(&self.lock_path);
     }
+}
+
+/// Walk up from `start` looking for a directory that contains `.claude/` or `.git/`.
+/// Returns the first such ancestor, or `None` if we reach the filesystem root.
+fn find_project_root(start: &Path) -> Option<PathBuf> {
+    let mut current = start.to_path_buf();
+    for _ in 0..20 {
+        // Prefer .claude/ (Claude Code project), fall back to .git/
+        if current.join(".claude").is_dir() || current.join(".git").is_dir() {
+            return Some(current);
+        }
+        if !current.pop() {
+            break;
+        }
+    }
+    None
 }
 
 #[cfg(test)]

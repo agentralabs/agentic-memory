@@ -66,9 +66,57 @@ amem runtime-sync my_agent.amem --workspace . --write-episode
 amem budget my_agent.amem --horizon-years 20 --max-bytes 2147483648
 ```
 
-## MCP quality tool
+## MCP Tools
 
-- `memory_quality` returns a graph reliability summary (confidence, staleness, orphan nodes, unsupported decisions).
+All tools exposed by the `agentic-memory-mcp` MCP server:
+
+### Core Tools
+
+| Tool | Purpose |
+|------|---------|
+| `memory_add` | Add a new cognitive event to the memory graph |
+| `memory_query` | Find memories matching conditions (pattern query) |
+| `memory_quality` | Evaluate memory reliability: confidence, staleness, orphan nodes |
+| `memory_traverse` | Walk the graph from a starting node, following edge types |
+| `memory_correct` | Record a correction to a previous belief |
+| `memory_resolve` | Follow the supersedes chain to get latest version of a belief |
+| `memory_context` | Get the full context (subgraph) around a node |
+| `memory_similar` | Find semantically similar memories using vector similarity |
+| `memory_causal` | Impact analysis — find everything that depends on a given node |
+| `memory_temporal` | Compare knowledge across two time periods |
+| `memory_stats` | Get statistics about the memory graph |
+
+### Context Capture Tools
+
+| Tool | Purpose |
+|------|---------|
+| `conversation_log` | Log conversation context and auto-capture interactions |
+
+### Grounding Tools (v0.3)
+
+| Tool | Purpose |
+|------|---------|
+| `memory_ground` | Verify a claim has memory backing |
+| `memory_evidence` | Get evidence for a claim from stored memories |
+| `memory_suggest` | Find similar memories when a claim doesn't match exactly |
+
+### Workspace Tools (v0.3)
+
+| Tool | Purpose |
+|------|---------|
+| `memory_workspace_create` | Create a multi-memory workspace |
+| `memory_workspace_add` | Add a .amem file to a workspace |
+| `memory_workspace_list` | List loaded memories in a workspace |
+| `memory_workspace_query` | Query across all loaded memories |
+| `memory_workspace_compare` | Compare topics across memory contexts |
+| `memory_workspace_xref` | Find topic distribution across contexts |
+
+### Session Tools
+
+| Tool | Purpose |
+|------|---------|
+| `session_start` | Start a new interaction session |
+| `session_end` | End a session and optionally create episode summary |
 
 ## MCP runtime capture controls
 

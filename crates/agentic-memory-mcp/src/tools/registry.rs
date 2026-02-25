@@ -10,10 +10,11 @@ use crate::types::{McpError, McpResult, ToolCallResult, ToolDefinition};
 
 use super::{
     conversation_log, memory_add, memory_causal, memory_context, memory_correct, memory_evidence,
-    memory_ground, memory_quality, memory_query, memory_resolve, memory_similar, memory_stats,
-    memory_suggest, memory_temporal, memory_traverse, memory_workspace_add,
-    memory_workspace_compare, memory_workspace_create, memory_workspace_list,
-    memory_workspace_query, memory_workspace_xref, session_end, session_start,
+    memory_ground, memory_quality, memory_query, memory_resolve, memory_session_resume,
+    memory_similar, memory_stats, memory_suggest, memory_temporal, memory_traverse,
+    memory_workspace_add, memory_workspace_compare, memory_workspace_create,
+    memory_workspace_list, memory_workspace_query, memory_workspace_xref, session_end,
+    session_start,
 };
 
 /// Registry of all available MCP tools.
@@ -49,6 +50,8 @@ impl ToolRegistry {
             // Session lifecycle
             session_start::definition(),
             session_end::definition(),
+            // Session continuity (bootstrap problem solver)
+            memory_session_resume::definition(),
         ]
     }
 
@@ -87,6 +90,8 @@ impl ToolRegistry {
             // Session
             "session_start" => session_start::execute(args, session).await,
             "session_end" => session_end::execute(args, session).await,
+            // Session continuity
+            "memory_session_resume" => memory_session_resume::execute(args, session).await,
             _ => Err(McpError::ToolNotFound(name.to_string())),
         }
     }

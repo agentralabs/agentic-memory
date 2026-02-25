@@ -9,6 +9,7 @@ pub mod memory_evidence;
 pub mod memory_ground;
 pub mod memory_quality;
 pub mod memory_query;
+pub mod memory_session_resume;
 pub mod memory_resolve;
 pub mod memory_similar;
 pub mod memory_stats;
