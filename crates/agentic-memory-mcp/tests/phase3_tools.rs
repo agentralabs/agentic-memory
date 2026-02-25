@@ -74,7 +74,8 @@ async fn test_memory_add_with_edges() {
         _ => panic!("Expected text"),
     };
     let parsed2: serde_json::Value = serde_json::from_str(text2).unwrap();
-    assert_eq!(parsed2["edges_created"], 1);
+    // 1 explicit caused_by edge + 1 automatic temporal_next edge from chain
+    assert_eq!(parsed2["edges_created"], 2);
 }
 
 #[tokio::test]

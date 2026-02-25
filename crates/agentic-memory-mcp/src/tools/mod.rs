@@ -1,5 +1,6 @@
 //! MCP tool implementations — the primary way LLMs interact with memory.
 
+pub mod conversation_log;
 pub mod memory_add;
 pub mod memory_causal;
 pub mod memory_context;

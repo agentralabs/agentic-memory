@@ -20,6 +20,9 @@ pub struct ProtocolHandler {
     session: Arc<Mutex<SessionManager>>,
     capabilities: Arc<Mutex<NegotiatedCapabilities>>,
     shutdown_requested: Arc<AtomicBool>,
+    memory_mode: MemoryMode,
+    /// Tracks whether an auto-session was started so we can auto-end it.
+    auto_session_started: AtomicBool,
 }
 
 impl ProtocolHandler {
@@ -29,6 +32,8 @@ impl ProtocolHandler {
             session,
             capabilities: Arc::new(Mutex::new(NegotiatedCapabilities::default())),
             shutdown_requested: Arc::new(AtomicBool::new(false)),
+            memory_mode: MemoryMode::Smart,
+            auto_session_started: AtomicBool::new(false),
         }
     }
 
@@ -38,6 +43,8 @@ impl ProtocolHandler {
             session,
             capabilities: Arc::new(Mutex::new(NegotiatedCapabilities::with_mode(mode))),
             shutdown_requested: Arc::new(AtomicBool::new(false)),
+            memory_mode: mode,
+            auto_session_started: AtomicBool::new(false),
         }
     }
 
@@ -60,6 +67,28 @@ impl ProtocolHandler {
                 None
             }
         }
+    }
+
+    /// Cleanup on transport close (EOF). Auto-ends session if one was started.
+    pub async fn cleanup(&self) {
+        if !self.auto_session_started.load(Ordering::Relaxed) {
+            return;
+        }
+
+        let mut session = self.session.lock().await;
+        let sid = session.current_session_id();
+        match session.end_session_with_episode(sid, "Session ended: MCP connection closed") {
+            Ok(episode_id) => {
+                tracing::info!("Auto-ended session {sid} on EOF, episode node {episode_id}");
+            }
+            Err(e) => {
+                tracing::warn!("Failed to auto-end session on EOF: {e}");
+                if let Err(save_err) = session.save() {
+                    tracing::error!("Failed to save on EOF cleanup: {save_err}");
+                }
+            }
+        }
+        self.auto_session_started.store(false, Ordering::Relaxed);
     }
 
     async fn handle_request(&self, request: JsonRpcRequest) -> Value {
@@ -112,6 +141,20 @@ impl ProtocolHandler {
                 if let Err(e) = caps.mark_initialized() {
                     tracing::error!("Failed to mark initialized: {e}");
                 }
+
+                // Auto-start session when client confirms connection (smart/full mode).
+                if self.memory_mode != MemoryMode::Minimal {
+                    let mut session = self.session.lock().await;
+                    match session.start_session(None) {
+                        Ok(sid) => {
+                            self.auto_session_started.store(true, Ordering::Relaxed);
+                            tracing::info!("Auto-started session {sid} (mode={:?})", self.memory_mode);
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to auto-start session: {e}");
+                        }
+                    }
+                }
             }
             "notifications/cancelled" | "$/cancelRequest" => {
                 tracing::info!("Received cancellation notification");
@@ -137,8 +180,25 @@ impl ProtocolHandler {
 
     async fn handle_shutdown(&self) -> McpResult<Value> {
         tracing::info!("Shutdown requested");
+
         let mut session = self.session.lock().await;
-        session.save()?;
+
+        // Auto-end session with episode summary if one was auto-started.
+        if self.auto_session_started.swap(false, Ordering::Relaxed) {
+            let sid = session.current_session_id();
+            match session.end_session_with_episode(sid, "Session ended: MCP client shutdown") {
+                Ok(episode_id) => {
+                    tracing::info!("Auto-ended session {sid}, episode node {episode_id}");
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to auto-end session on shutdown: {e}");
+                    session.save()?;
+                }
+            }
+        } else {
+            session.save()?;
+        }
+
         self.shutdown_requested.store(true, Ordering::Relaxed);
         Ok(Value::Object(serde_json::Map::new()))
     }

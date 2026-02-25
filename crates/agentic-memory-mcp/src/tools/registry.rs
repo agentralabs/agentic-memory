@@ -9,9 +9,9 @@ use crate::session::SessionManager;
 use crate::types::{McpError, McpResult, ToolCallResult, ToolDefinition};
 
 use super::{
-    memory_add, memory_causal, memory_context, memory_correct, memory_quality, memory_query,
-    memory_resolve, memory_similar, memory_stats, memory_temporal, memory_traverse, session_end,
-    session_start,
+    conversation_log, memory_add, memory_causal, memory_context, memory_correct, memory_quality,
+    memory_query, memory_resolve, memory_similar, memory_stats, memory_temporal, memory_traverse,
+    session_end, session_start,
 };
 
 /// Registry of all available MCP tools.
@@ -21,6 +21,7 @@ impl ToolRegistry {
     /// List all available tool definitions.
     pub fn list_tools() -> Vec<ToolDefinition> {
         vec![
+            conversation_log::definition(),
             memory_add::definition(),
             memory_query::definition(),
             memory_quality::definition(),
@@ -46,6 +47,7 @@ impl ToolRegistry {
         let args = arguments.unwrap_or(Value::Object(serde_json::Map::new()));
 
         match name {
+            "conversation_log" => conversation_log::execute(args, session).await,
             "memory_add" => memory_add::execute(args, session).await,
             "memory_query" => memory_query::execute(args, session).await,
             "memory_quality" => memory_quality::execute(args, session).await,

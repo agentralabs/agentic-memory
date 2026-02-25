@@ -1,9 +1,11 @@
 //! Graph lifecycle management, file I/O, and session tracking.
 
+use std::collections::HashMap;
 use std::ffi::OsStr;
+use std::fs::OpenOptions;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use agentic_memory::{
     AmemReader, AmemWriter, CognitiveEventBuilder, Edge, EdgeType, EventType, MemoryGraph,
@@ -238,6 +240,11 @@ pub struct SessionManager {
     auto_capture_redact: bool,
     auto_capture_max_chars: usize,
     auto_capture_count: u64,
+    /// ID of the last node added to the temporal chain in this session.
+    /// Used to create TemporalNext edges between consecutive captures.
+    last_temporal_node_id: Option<u64>,
+    /// Last known file modification time (for detecting external writes).
+    last_file_mtime: Option<SystemTime>,
 }
 
 impl SessionManager {
@@ -274,9 +281,13 @@ impl SessionManager {
             MemoryGraph::new(dimension)
         };
 
-        // Determine the next session ID from existing sessions
+        // Determine the next session ID from existing sessions.
+        // Incorporate PID to avoid collisions when multiple MCP instances share
+        // the same .amem file (e.g. two Claude Code windows on different projects).
         let session_ids = graph.session_index().session_ids();
-        let current_session = session_ids.iter().copied().max().unwrap_or(0) + 1;
+        let max_existing = session_ids.iter().copied().max().unwrap_or(0);
+        let pid_component = (std::process::id() % 1000) as u32;
+        let current_session = max_existing.saturating_add(1).saturating_add(pid_component);
 
         tracing::info!(
             "Session {} started. Graph has {} nodes, {} edges.",
@@ -380,6 +391,12 @@ impl SessionManager {
             auto_capture_redact,
             auto_capture_max_chars,
             auto_capture_count: 0,
+            last_temporal_node_id: None,
+            last_file_mtime: if file_existed {
+                std::fs::metadata(path).and_then(|m| m.modified()).ok()
+            } else {
+                None
+            },
         };
 
         if let Some(version) = legacy_version {
@@ -451,10 +468,13 @@ impl SessionManager {
     pub fn start_session(&mut self, explicit_id: Option<u32>) -> McpResult<u32> {
         let session_id = explicit_id.unwrap_or_else(|| {
             let ids = self.graph.session_index().session_ids();
-            ids.iter().copied().max().unwrap_or(0) + 1
+            let max_indexed = ids.iter().copied().max().unwrap_or(0);
+            // Ensure monotonic: new session must be > current session.
+            max_indexed.max(self.current_session).saturating_add(1)
         });
 
         self.current_session = session_id;
+        self.last_temporal_node_id = None;
         self.last_activity = Instant::now();
         tracing::info!("Started session {session_id}");
         Ok(session_id)
@@ -477,10 +497,31 @@ impl SessionManager {
         Ok(episode_id)
     }
 
-    /// Save the graph to file.
+    /// Save the graph to file with file-locking for concurrent session safety.
+    ///
+    /// When multiple MCP instances share the same `.amem` file, this method:
+    /// 1. Acquires an exclusive file lock (sidecar `.amem.lock`)
+    /// 2. Checks if the file was modified externally (by another instance)
+    /// 3. If so, re-reads the disk graph and merges our session's new nodes
+    /// 4. Writes the merged graph and releases the lock
     pub fn save(&mut self) -> McpResult<()> {
         if !self.dirty {
             return Ok(());
+        }
+
+        let _lock = FileLock::acquire(&self.file_path)?;
+
+        // Detect external modifications from concurrent sessions.
+        if self.file_path.exists() {
+            let current_mtime = std::fs::metadata(&self.file_path)
+                .and_then(|m| m.modified())
+                .ok();
+            if let (Some(current), Some(last_known)) = (current_mtime, self.last_file_mtime) {
+                if current > last_known {
+                    tracing::info!("Detected external modification, merging with disk state");
+                    self.merge_with_disk()?;
+                }
+            }
         }
 
         let writer = AmemWriter::new(self.graph.dimension());
@@ -488,10 +529,86 @@ impl SessionManager {
             .write_to_file(&self.graph, &self.file_path)
             .map_err(|e| McpError::AgenticMemory(format!("Failed to write memory file: {e}")))?;
 
+        // Update our mtime tracking after successful write.
+        self.last_file_mtime = std::fs::metadata(&self.file_path)
+            .and_then(|m| m.modified())
+            .ok();
+
         self.dirty = false;
         self.last_save = Instant::now();
         self.save_generation = self.save_generation.saturating_add(1);
         tracing::debug!("Saved memory file: {}", self.file_path.display());
+        Ok(())
+    }
+
+    /// Merge our session's nodes/edges with the latest disk state.
+    ///
+    /// This handles the case where another MCP instance wrote to the same file
+    /// since we last read it. We re-read the disk, then re-add our session's
+    /// nodes on top of the latest state.
+    fn merge_with_disk(&mut self) -> McpResult<()> {
+        let disk_graph = AmemReader::read_from_file(&self.file_path)
+            .map_err(|e| McpError::AgenticMemory(format!("Failed to re-read for merge: {e}")))?;
+
+        // Collect our session's nodes (those we created in this process).
+        let our_nodes: Vec<_> = self
+            .graph
+            .nodes()
+            .iter()
+            .filter(|n| n.session_id == self.current_session)
+            .cloned()
+            .collect();
+
+        // Collect edges where source belongs to our session.
+        let our_node_ids: std::collections::HashSet<u64> =
+            our_nodes.iter().map(|n| n.id).collect();
+        let our_edges: Vec<_> = self
+            .graph
+            .edges()
+            .iter()
+            .filter(|e| {
+                our_node_ids.contains(&e.source_id) || our_node_ids.contains(&e.target_id)
+            })
+            .cloned()
+            .collect();
+
+        // Replace our graph with the latest disk state.
+        self.graph = disk_graph;
+
+        // Re-add our session's nodes with fresh IDs from the merged graph.
+        let mut id_map: HashMap<u64, u64> = HashMap::new();
+        for node in &our_nodes {
+            let event = CognitiveEventBuilder::new(node.event_type, node.content.clone())
+                .session_id(self.current_session)
+                .confidence(node.confidence)
+                .build();
+            let result = self
+                .write_engine
+                .ingest(&mut self.graph, vec![event], vec![])
+                .map_err(|e| {
+                    McpError::AgenticMemory(format!("Merge node re-add failed: {e}"))
+                })?;
+            if let Some(&new_id) = result.new_node_ids.first() {
+                id_map.insert(node.id, new_id);
+            }
+        }
+
+        // Re-add our session's edges with remapped IDs.
+        for edge in &our_edges {
+            let source = id_map.get(&edge.source_id).copied().unwrap_or(edge.source_id);
+            let target = id_map.get(&edge.target_id).copied().unwrap_or(edge.target_id);
+            let new_edge = Edge::new(source, target, edge.edge_type, edge.weight);
+            if let Err(e) = self.graph.add_edge(new_edge) {
+                tracing::warn!("Merge edge re-add skipped: {e}");
+            }
+        }
+
+        tracing::info!(
+            "Merged {} nodes and {} edges from session {} into disk state",
+            our_nodes.len(),
+            our_edges.len(),
+            self.current_session
+        );
         Ok(())
     }
 
@@ -591,6 +708,26 @@ impl SessionManager {
     /// Get the file path.
     pub fn file_path(&self) -> &PathBuf {
         &self.file_path
+    }
+
+    /// The ID of the most recent node in the temporal chain for this session.
+    pub fn last_temporal_node_id(&self) -> Option<u64> {
+        self.last_temporal_node_id
+    }
+
+    /// Advance the temporal chain pointer to the given node ID.
+    pub fn advance_temporal_chain(&mut self, node_id: u64) {
+        self.last_temporal_node_id = Some(node_id);
+    }
+
+    /// Create a TemporalNext edge from `prev_id` to `next_id` (forward in time).
+    pub fn link_temporal(&mut self, prev_id: u64, next_id: u64) -> McpResult<()> {
+        let edge = Edge::new(prev_id, next_id, EdgeType::TemporalNext, 1.0);
+        self.graph
+            .add_edge(edge)
+            .map_err(|e| McpError::AgenticMemory(format!("Failed to add temporal edge: {e}")))?;
+        self.dirty = true;
+        Ok(())
     }
 
     /// Background maintenance loop interval.
@@ -973,7 +1110,17 @@ impl SessionManager {
             text.push_str(" …[truncated]");
         }
 
+        let prev_id = self.last_temporal_node_id;
         let (node_id, _) = self.add_event(event_type, &text, confidence, vec![])?;
+
+        // Chain this capture to the previous node in the session's temporal thread.
+        if let Some(prev) = prev_id {
+            if let Err(e) = self.link_temporal(prev, node_id) {
+                tracing::warn!("Failed to link temporal chain: {e}");
+            }
+        }
+        self.last_temporal_node_id = Some(node_id);
+
         self.auto_capture_count = self.auto_capture_count.saturating_add(1);
         Ok(Some(node_id))
     }
@@ -1438,6 +1585,78 @@ fn looks_like_long_secret(token: &str) -> bool {
         .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-' || c == '.')
 }
 
+/// File-based exclusive lock for concurrent `.amem` access.
+///
+/// Uses a sidecar `.amem.lock` file with `create_new` (O_EXCL) for atomic
+/// creation. Stale locks older than 60 seconds are auto-cleaned. The lock
+/// is released on drop.
+struct FileLock {
+    lock_path: PathBuf,
+}
+
+impl FileLock {
+    /// Acquire an exclusive lock for the given data file.
+    /// Spins with a 50ms backoff until the lock is available.
+    fn acquire(data_path: &Path) -> McpResult<Self> {
+        let lock_path = data_path.with_extension("amem.lock");
+        let stale_threshold = Duration::from_secs(60);
+        let max_attempts = 200; // 200 * 50ms = 10 seconds max wait
+
+        for attempt in 0..max_attempts {
+            match OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&lock_path)
+            {
+                Ok(_file) => {
+                    if attempt > 0 {
+                        tracing::debug!(
+                            "Acquired file lock after {} attempts: {}",
+                            attempt + 1,
+                            lock_path.display()
+                        );
+                    }
+                    return Ok(FileLock { lock_path });
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                    // Check if the lock is stale (owner crashed).
+                    if let Ok(meta) = std::fs::metadata(&lock_path) {
+                        let is_stale = meta
+                            .modified()
+                            .ok()
+                            .and_then(|m| m.elapsed().ok())
+                            .map(|age| age > stale_threshold)
+                            .unwrap_or(false);
+                        if is_stale {
+                            tracing::warn!(
+                                "Removing stale lock file: {}",
+                                lock_path.display()
+                            );
+                            let _ = std::fs::remove_file(&lock_path);
+                            continue;
+                        }
+                    }
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+                Err(e) => {
+                    return Err(McpError::Io(e));
+                }
+            }
+        }
+
+        Err(McpError::AgenticMemory(format!(
+            "Timed out waiting for file lock: {}",
+            lock_path.display()
+        )))
+    }
+}
+
+impl Drop for FileLock {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.lock_path);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1474,14 +1693,14 @@ mod tests {
         let brain = dir.path().join("rollup.amem");
         let mut manager = SessionManager::open(brain.to_str().expect("path")).expect("open");
 
-        // Build session 1 with enough content, then move to session 2 so session 1 is completed.
+        // Build current session with enough content, then advance so it becomes completed.
         let _ = manager
             .add_event(EventType::Fact, "alpha", 0.8, vec![])
             .expect("add");
         let _ = manager
             .add_event(EventType::Decision, "beta", 0.9, vec![])
             .expect("add");
-        manager.start_session(Some(2)).expect("session");
+        manager.start_session(None).expect("session");
         manager.save().expect("save");
 
         // Force tiny budget to trigger rollup.
@@ -1550,5 +1769,105 @@ mod tests {
         assert!(latest.content.contains("[REDACTED_SECRET]"));
         assert!(latest.content.contains("[REDACTED_PATH]"));
         assert!(latest.content.contains("[REDACTED_EMAIL]"));
+    }
+
+    #[test]
+    fn auto_capture_temporal_chain() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let brain = dir.path().join("chain.amem");
+        let mut manager = SessionManager::open(brain.to_str().expect("path")).expect("open");
+        manager.auto_capture_mode = AutoCaptureMode::Full;
+
+        // First capture: no predecessor.
+        let id1 = manager
+            .capture_tool_call(
+                "memory_query",
+                Some(&json!({"query": "first question"})),
+            )
+            .expect("capture")
+            .expect("node_id");
+
+        assert_eq!(manager.last_temporal_node_id(), Some(id1));
+
+        // Second capture: should link to first.
+        let id2 = manager
+            .capture_tool_call(
+                "memory_similar",
+                Some(&json!({"query_text": "second question"})),
+            )
+            .expect("capture")
+            .expect("node_id");
+
+        assert_eq!(manager.last_temporal_node_id(), Some(id2));
+
+        // Verify the TemporalNext edge exists: id1 -> id2.
+        let has_temporal = manager
+            .graph()
+            .edges()
+            .iter()
+            .any(|e| {
+                e.source_id == id1
+                    && e.target_id == id2
+                    && e.edge_type == EdgeType::TemporalNext
+            });
+        assert!(has_temporal, "Expected TemporalNext edge from id1 to id2");
+    }
+
+    #[test]
+    fn temporal_chain_resets_on_new_session() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let brain = dir.path().join("reset.amem");
+        let mut manager = SessionManager::open(brain.to_str().expect("path")).expect("open");
+        manager.auto_capture_mode = AutoCaptureMode::Full;
+
+        let _id1 = manager
+            .capture_tool_call(
+                "memory_query",
+                Some(&json!({"query": "first"})),
+            )
+            .expect("capture");
+
+        assert!(manager.last_temporal_node_id().is_some());
+
+        // Starting a new session should reset the chain.
+        manager.start_session(None).expect("new session");
+        assert!(manager.last_temporal_node_id().is_none());
+    }
+
+    #[test]
+    fn memory_add_joins_temporal_chain() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let brain = dir.path().join("splice.amem");
+        let mut manager = SessionManager::open(brain.to_str().expect("path")).expect("open");
+        manager.auto_capture_mode = AutoCaptureMode::Full;
+
+        // Create a chain head via auto-capture.
+        let id1 = manager
+            .capture_tool_call(
+                "memory_query",
+                Some(&json!({"query": "something"})),
+            )
+            .expect("capture")
+            .expect("node_id");
+
+        // Simulate what memory_add tool does: add_event + link_temporal + advance.
+        let (id2, _) = manager
+            .add_event(EventType::Fact, "User prefers dark mode", 0.9, vec![])
+            .expect("add_event");
+        manager.link_temporal(id1, id2).expect("link");
+        manager.advance_temporal_chain(id2);
+
+        assert_eq!(manager.last_temporal_node_id(), Some(id2));
+
+        let has_edge = manager
+            .graph()
+            .edges()
+            .iter()
+            .any(|e| {
+                e.source_id == id1
+                    && e.target_id == id2
+                    && e.edge_type == EdgeType::TemporalNext
+            });
+        assert!(has_edge, "memory_add node should be linked into chain");
     }
 }

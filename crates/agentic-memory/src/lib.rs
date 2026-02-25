@@ -3,9 +3,12 @@
 //! Stores cognitive events (facts, decisions, inferences, corrections, skills, episodes)
 //! as nodes in a graph, with typed edges representing relationships between them.
 
+#[cfg(feature = "cli")]
 pub mod cli;
 pub mod engine;
+#[cfg(feature = "ffi")]
 pub mod ffi;
+#[cfg(feature = "format")]
 pub mod format;
 pub mod graph;
 pub mod index;
@@ -18,6 +21,7 @@ pub use engine::{
     SimilarityParams, SubGraph, TemporalParams, TemporalResult, TimeRange, TraversalParams,
     TraversalResult, WriteEngine,
 };
+#[cfg(feature = "format")]
 pub use format::{AmemReader, AmemWriter, MmapReader, SimilarityMatch};
 pub use graph::{GraphBuilder, MemoryGraph, TraversalDirection};
 pub use index::{

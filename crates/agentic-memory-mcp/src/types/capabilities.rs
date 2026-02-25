@@ -146,7 +146,7 @@ impl ServerCapabilities {
 }
 
 /// Memory saving mode — controls how aggressively the LLM saves memories.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum MemoryMode {
     /// Only save when the user explicitly says "remember".
     Minimal,
@@ -188,6 +188,10 @@ impl MemoryMode {
                  Use memory_add with the appropriate event_type (fact, decision, inference, correction, skill). \
                  ALWAYS check memory at the start of conversations: \
                  use memory_query or memory_similar to recall relevant context before responding. \
+                 CONVERSATION LOGGING: After responding to each substantive user message, \
+                 call conversation_log with a brief user_message summary and your agent_response summary. \
+                 This creates a connected conversation thread in memory. \
+                 Skip logging for trivial exchanges (greetings, \"ok\", \"thanks\"). \
                  Do NOT save: general knowledge questions, transient small talk, or sensitive data (passwords, keys). \
                  When the user contradicts a stored fact, use memory_correct to update it. \
                  Use memory_traverse to explain past reasoning when asked why something was decided."
@@ -200,8 +204,11 @@ impl MemoryMode {
                  Use memory_add with the appropriate event_type after every substantive user message. \
                  ALWAYS check memory at the start of conversations: \
                  use memory_query or memory_similar to recall relevant context before responding. \
-                 Only skip saving: trivial acknowledgments (\"thanks\", \"ok\"), \
-                 greetings, and sensitive data (passwords, API keys). \
+                 CONVERSATION LOGGING: After EVERY user message, call conversation_log with: \
+                 user_message (what the user said), agent_response (what you did/said), \
+                 and topic (the subject area). This creates a complete conversation record. \
+                 Only skip logging for trivial acknowledgments (\"thanks\", \"ok\"). \
+                 Only skip saving: trivial acknowledgments and sensitive data (passwords, API keys). \
                  When the user contradicts a stored fact, use memory_correct to update it. \
                  Use memory_traverse to explain past reasoning when asked why something was decided. \
                  At the end of conversations, use session_end to create an episode summary."

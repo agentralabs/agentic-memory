@@ -37,7 +37,9 @@ impl StdioTransport {
             let bytes_read = reader.read_line(&mut line).await.map_err(McpError::Io)?;
 
             if bytes_read == 0 {
-                tracing::info!("EOF on stdin, shutting down");
+                tracing::info!("EOF on stdin, running cleanup");
+                self.handler.cleanup().await;
+                tracing::info!("Cleanup complete, shutting down");
                 break;
             }
 

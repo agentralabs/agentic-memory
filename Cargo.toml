@@ -5,6 +5,9 @@ members = [
     "crates/agentic-memory-mcp",
     "tests/bridge",
 ]
+exclude = [
+    "npm/wasm",
+]
 
 [workspace.package]
 edition = "2021"

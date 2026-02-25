@@ -115,8 +115,16 @@ pub async fn execute(
         .collect::<McpResult<Vec<_>>>()?;
 
     let mut session = session.lock().await;
-    let (node_id, edges_created) =
+    let (node_id, mut edges_created) =
         session.add_event(event_type, &params.content, params.confidence, edges)?;
+
+    // Splice this explicit add into the temporal chain.
+    if let Some(prev_id) = session.last_temporal_node_id() {
+        if session.link_temporal(prev_id, node_id).is_ok() {
+            edges_created += 1;
+        }
+    }
+    session.advance_temporal_chain(node_id);
 
     Ok(ToolCallResult::json(&json!({
         "node_id": node_id,
