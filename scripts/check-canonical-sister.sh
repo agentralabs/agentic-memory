@@ -109,13 +109,13 @@ assert_file "scripts/install.sh"
 assert_file "scripts/check-install-commands.sh"
 assert_file "scripts/check-runtime-hardening.sh"
 assert_file "scripts/test-primary-problems.sh"
-assert_file "docs/quickstart.md"
-assert_file "docs/concepts.md"
-assert_file "docs/integration-guide.md"
-assert_file "docs/faq.md"
-assert_file "docs/benchmarks.md"
-assert_file "docs/api-reference.md"
-assert_one_of "docs/file-format.md" "docs/LIMITATIONS.md"
+assert_file "docs/public/quickstart.md"
+assert_file "docs/public/concepts.md"
+assert_file "docs/public/integration-guide.md"
+assert_file "docs/public/faq.md"
+assert_file "docs/public/benchmarks.md"
+assert_file "docs/public/api-reference.md"
+assert_one_of "docs/public/file-format.md" "docs/public/LIMITATIONS.md"
 assert_file "docs/public/primary-problem-coverage.md"
 assert_file "docs/public/initial-problem-coverage.md"
 assert_file "docs/public/sister.manifest.json"
@@ -277,6 +277,27 @@ assert_file "assets/architecture-agentra.svg"
 
 assert_contains 'benchmark-chart.svg' README.md
 assert_contains 'architecture-agentra.svg' README.md
+
+# ── 20. No root-level doc duplication ────────────────────────────────────────
+# Canonical docs live in docs/public/. Root-level duplicates cause confusion.
+
+ANTI_DUPE_FILES=(
+  "docs/quickstart.md"
+  "docs/concepts.md"
+  "docs/integration-guide.md"
+  "docs/faq.md"
+  "docs/benchmarks.md"
+  "docs/api-reference.md"
+  "docs/file-format.md"
+  "docs/command-surface.md"
+  "docs/runtime-install-sync.md"
+)
+
+for dupe in "${ANTI_DUPE_FILES[@]}"; do
+  if git ls-files --error-unmatch "$dupe" >/dev/null 2>&1; then
+    fail "Root-level duplicate doc must not be tracked: $dupe (canonical location: docs/public/)"
+  fi
+done
 
 # ── Done ────────────────────────────────────────────────────────────────────
 
