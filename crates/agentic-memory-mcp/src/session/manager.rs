@@ -286,7 +286,7 @@ impl SessionManager {
         // the same .amem file (e.g. two Claude Code windows on different projects).
         let session_ids = graph.session_index().session_ids();
         let max_existing = session_ids.iter().copied().max().unwrap_or(0);
-        let pid_component = (std::process::id() % 1000) as u32;
+        let pid_component = std::process::id() % 1000;
         let current_session = max_existing.saturating_add(1).saturating_add(pid_component);
 
         tracing::info!(
