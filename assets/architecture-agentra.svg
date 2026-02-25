@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-label="AgenticMemory architecture in Agentra Labs design system">
+  <defs>
+    <pattern id="dotgrid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.1" fill="#c8c5bb"/>
+    </pattern>
+    <style><![CDATA[
+      .mono { font-family:'IBM Plex Mono','JetBrains Mono',monospace; }
+      .ink { fill:#111111; }
+      .muted { fill:#6f6a5f; }
+      .accent { fill:#ea580c; }
+      .panel { fill:#f2f1ea; stroke:#111111; stroke-width:2; }
+      .card { fill:#fbfaf4; stroke:#111111; stroke-width:1.6; }
+      .card-accent { fill:#f6ece4; stroke:#111111; stroke-width:1.6; }
+      .card-dark { fill:#141414; stroke:#111111; stroke-width:1.6; }
+      .wire-soft { stroke:#8f897e; stroke-width:1.2; }
+      .wire-accent { stroke:#ea580c; stroke-width:1.8; }
+    ]]></style>
+  </defs>
+
+  <rect width="1200" height="560" fill="#f2f1ea"/>
+  <rect width="1200" height="560" fill="url(#dotgrid)"/>
+
+  <line x1="26" y1="28" x2="1174" y2="28" stroke="#111111"/>
+  <text x="30" y="20" class="mono muted" font-size="12" letter-spacing="2.2">// SECTION: AGENTICMEMORY.ARCH</text>
+  <text x="1168" y="20" text-anchor="end" class="mono muted" font-size="12" letter-spacing="2">TICK:0101</text>
+
+  <rect x="26" y="46" width="1148" height="492" class="panel"/>
+
+  <text x="600" y="84" text-anchor="middle" class="mono ink" font-size="24" letter-spacing="3" font-weight="700">AGENTICMEMORY ARCHITECTURE</text>
+
+  <rect x="70" y="106" width="220" height="54" rx="10" class="card"/>
+  <text x="180" y="139" text-anchor="middle" class="mono ink" font-size="16" font-weight="700">Claude / Cursor</text>
+
+  <rect x="310" y="106" width="220" height="54" rx="10" class="card"/>
+  <text x="420" y="139" text-anchor="middle" class="mono ink" font-size="16" font-weight="700">amem CLI</text>
+
+  <rect x="550" y="106" width="260" height="54" rx="10" class="card"/>
+  <text x="680" y="139" text-anchor="middle" class="mono ink" font-size="16" font-weight="700">agentic-memory-mcp</text>
+
+  <rect x="830" y="106" width="300" height="54" rx="10" class="card"/>
+  <text x="980" y="139" text-anchor="middle" class="mono ink" font-size="16" font-weight="700">Rust API / Python SDK</text>
+
+  <line x1="180" y1="160" x2="180" y2="184" class="wire-soft"/>
+  <line x1="420" y1="160" x2="420" y2="184" class="wire-soft"/>
+  <line x1="680" y1="160" x2="680" y2="184" class="wire-soft"/>
+  <line x1="980" y1="160" x2="980" y2="184" class="wire-soft"/>
+
+  <rect x="70" y="184" width="1060" height="36" rx="7" class="card-dark"/>
+  <text x="600" y="207" text-anchor="middle" class="mono" fill="#f5f4ee" font-size="14" letter-spacing="2.2">MCP STDIO + CLI + FFI SURFACE</text>
+
+  <line x1="600" y1="220" x2="600" y2="242" class="wire-soft"/>
+
+  <rect x="70" y="242" width="1060" height="258" rx="12" class="card"/>
+  <text x="92" y="268" class="mono muted" font-size="14" letter-spacing="1.6">AGENTIC-MEMORY CORE (Rust)</text>
+
+  <rect x="92" y="284" width="250" height="68" rx="8" class="card-accent"/>
+  <text x="217" y="312" text-anchor="middle" class="mono ink" font-size="16" font-weight="700">Cognitive Graph</text>
+  <text x="217" y="334" text-anchor="middle" class="mono muted" font-size="11">nodes + edges + traversal + decay</text>
+
+  <rect x="362" y="284" width="250" height="68" rx="8" class="card-accent"/>
+  <text x="487" y="312" text-anchor="middle" class="mono ink" font-size="16" font-weight="700">Query Engine</text>
+  <text x="487" y="334" text-anchor="middle" class="mono muted" font-size="11">16 types: BM25 + vector + graph</text>
+
+  <rect x="632" y="284" width="250" height="68" rx="8" class="card-accent"/>
+  <text x="757" y="312" text-anchor="middle" class="mono ink" font-size="16" font-weight="700">Event Types</text>
+  <text x="757" y="334" text-anchor="middle" class="mono muted" font-size="11">fact / decision / inference / correction</text>
+
+  <rect x="902" y="284" width="206" height="68" rx="8" class="card-accent"/>
+  <text x="1005" y="312" text-anchor="middle" class="mono ink" font-size="16" font-weight="700">Session Manager</text>
+  <text x="1005" y="334" text-anchor="middle" class="mono muted" font-size="11">auto-capture + temporal chain</text>
+
+  <line x1="600" y1="352" x2="600" y2="372" class="wire-accent"/>
+
+  <rect x="92" y="372" width="322" height="66" rx="8" class="card"/>
+  <text x="253" y="398" text-anchor="middle" class="mono ink" font-size="16" font-weight="700">Artifact Layer</text>
+  <text x="253" y="419" text-anchor="middle" class="mono muted" font-size="12">portable .amem binary graph files</text>
+
+  <rect x="438" y="372" width="322" height="66" rx="8" class="card"/>
+  <text x="599" y="398" text-anchor="middle" class="mono ink" font-size="16" font-weight="700">Operational Safety</text>
+  <text x="599" y="419" text-anchor="middle" class="mono muted" font-size="12">budget policy, rollup, backup, locking</text>
+
+  <rect x="784" y="372" width="324" height="66" rx="8" class="card"/>
+  <text x="946" y="398" text-anchor="middle" class="mono ink" font-size="16" font-weight="700">Integration Surface</text>
+  <text x="946" y="419" text-anchor="middle" class="mono muted" font-size="12">AgenticVision links + cross-agent workflows</text>
+
+  <rect x="92" y="452" width="1016" height="30" rx="6" class="card-dark"/>
+  <text x="600" y="472" text-anchor="middle" class="mono" fill="#f5f4ee" font-size="12" letter-spacing="1.2">6 event types · 16 query types · microsecond navigation · one binary graph file</text>
+
+  <circle cx="1142" cy="524" r="5" class="accent"/>
+</svg>

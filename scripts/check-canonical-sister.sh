@@ -268,6 +268,16 @@ assert_contains 'npm install @agenticamem/' README.md
 
 assert_contains 'npm install @agenticamem/' docs/public/installation.md
 
+# ── 18. Required SVG assets ──────────────────────────────────────────────────
+
+assert_file "assets/benchmark-chart.svg"
+assert_file "assets/architecture-agentra.svg"
+
+# ── 19. README references benchmark and architecture SVGs ────────────────────
+
+assert_contains 'benchmark-chart.svg' README.md
+assert_contains 'architecture-agentra.svg' README.md
+
 # ── Done ────────────────────────────────────────────────────────────────────
 
 echo "Canonical sister guardrails passed."

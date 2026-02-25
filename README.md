@@ -478,7 +478,17 @@ response = MemoryAgent(brain, OpenAIProvider()).chat(
 
 ## How It Works
 
-AgenticMemory stores knowledge as a **typed cognitive event graph** in a custom binary format.
+<p align="center">
+  <img src="assets/architecture-agentra.svg" alt="AgenticMemory architecture with cognitive graph, query engine, and session manager" width="980">
+</p>
+
+AgenticMemory stores knowledge as a **typed cognitive event graph** in a custom binary format. Nodes represent cognitive events (facts, decisions, inferences, corrections, skills, episodes). Edges encode causal relationships, belief revision, and temporal ordering. The query engine supports 16 navigation types across the graph.
+
+The core runtime is written in Rust for performance and safety. All state lives in a portable `.amem` binary file -- no external databases, no managed vector services. The MCP server exposes the full engine over JSON-RPC stdio.
+
+---
+
+**The cognitive graph in detail:**
 
 <p align="center">
   <img src="assets/brain-graph.svg" alt="Cognitive event graph with typed nodes, causal edges, and belief revision" width="800">
