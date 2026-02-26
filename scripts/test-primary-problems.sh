@@ -18,7 +18,7 @@ assert_contains() {
 }
 
 run_amem() {
-  cargo run --quiet --bin amem -- "$@"
+  cargo run --quiet -p agentic-memory-cli --bin amem -- "$@"
 }
 
 tmpdir="$(mktemp -d)"
