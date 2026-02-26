@@ -305,6 +305,23 @@ done
 assert_file "docs/public/playbooks-agent-integration.md"
 assert_frontmatter_status_stable "docs/public/playbooks-agent-integration.md"
 
+# ── 22. 4-crate structure (core + mcp + cli + ffi) + language bindings ──────
+
+assert_dir "crates/agentic-${SISTER_KEY}-cli"
+assert_file "crates/agentic-${SISTER_KEY}-cli/Cargo.toml"
+
+assert_dir "crates/agentic-${SISTER_KEY}-mcp"
+assert_file "crates/agentic-${SISTER_KEY}-mcp/Cargo.toml"
+
+assert_dir "crates/agentic-${SISTER_KEY}-ffi"
+assert_file "crates/agentic-${SISTER_KEY}-ffi/Cargo.toml"
+
+assert_dir "python"
+assert_file "python/pyproject.toml"
+
+assert_dir "npm/wasm"
+assert_file "npm/wasm/Cargo.toml"
+
 # ── Done ────────────────────────────────────────────────────────────────────
 
 echo "Canonical sister guardrails passed."
