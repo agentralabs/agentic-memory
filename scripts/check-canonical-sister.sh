@@ -323,6 +323,24 @@ assert_file "python/pyproject.toml"
 assert_dir "npm/wasm"
 assert_file "npm/wasm/Cargo.toml"
 
+# ── 23. MCP stdio hardening (Section 13 enforcement) ────────────────────────
+# Every sister's MCP server must enforce:
+#   - 8 MiB frame size limit (MAX_CONTENT_LENGTH_BYTES)
+#   - Content-Length framing support
+#   - JSON-RPC version validation ("2.0")
+
+MCP_SRC="crates/agentic-${SISTER_KEY}-mcp/src"
+assert_dir "$MCP_SRC"
+
+# 8 MiB frame limit constant must exist in MCP server source
+assert_contains "MAX_CONTENT_LENGTH_BYTES" "$MCP_SRC"
+
+# Content-Length header parsing must exist
+assert_contains "content-length:" "$MCP_SRC"
+
+# JSON-RPC 2.0 version must be validated (reject non-2.0)
+assert_contains 'jsonrpc' "$MCP_SRC"
+
 # ── Done ────────────────────────────────────────────────────────────────────
 
 echo "Canonical sister guardrails passed."
