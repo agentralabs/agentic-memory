@@ -1,7 +1,7 @@
 //! V3 integration tests + edge case tests
 
 #[cfg(test)]
-mod tests {
+mod v3_tests {
     use crate::v3::block::*;
     use crate::v3::engine::*;
     use crate::v3::immortal_log::*;
@@ -455,7 +455,7 @@ mod tests {
             let wal = WriteAheadLog::open(dir.path()).unwrap();
             let recovered = wal.recover().unwrap();
             assert!(
-                recovered.len() >= 1,
+                !recovered.is_empty(),
                 "Should recover at least the valid entry"
             );
         }
@@ -528,7 +528,7 @@ mod tests {
         // This should NOT trigger rebuild (indexes are consistent)
         let rebuilt = engine.rebuild_indexes_if_needed();
         // On a fresh engine, indexes should be consistent
-        assert!(!rebuilt || true); // May or may not rebuild depending on timing
+        let _ = rebuilt; // May or may not rebuild depending on timing
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -664,7 +664,7 @@ mod tests {
         let report = log.verify_integrity();
         // May or may not detect depending on where corruption lands
         // The important thing is it doesn't crash
-        assert!(report.blocks_checked > 0 || true);
+        let _ = report.blocks_checked; // May or may not detect corruption; the key is no crash
     }
 
     // ═══════════════════════════════════════════════════════════════════

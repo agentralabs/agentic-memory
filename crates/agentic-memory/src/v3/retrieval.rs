@@ -71,6 +71,7 @@ impl SmartRetrievalEngine {
     }
 
     /// Main retrieval function
+    #[allow(clippy::too_many_arguments)]
     pub fn retrieve(
         &self,
         request: RetrievalRequest,

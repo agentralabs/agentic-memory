@@ -162,13 +162,12 @@ impl Index for ProceduralIndex {
         self.hashes.insert(block.sequence, block.hash);
 
         // Check for session boundary
-        if let BlockContent::Boundary { boundary_type, .. } = &block.content {
-            match boundary_type {
-                BoundaryType::SessionStart | BoundaryType::Compaction => {
-                    self.current_session = uuid::Uuid::new_v4().to_string();
-                }
-                _ => {}
-            }
+        if let BlockContent::Boundary {
+            boundary_type: BoundaryType::SessionStart | BoundaryType::Compaction,
+            ..
+        } = &block.content
+        {
+            self.current_session = uuid::Uuid::new_v4().to_string();
         }
 
         // Add to current session

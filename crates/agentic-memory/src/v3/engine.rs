@@ -191,8 +191,10 @@ impl MemoryEngineV3 {
         let temporal = self.temporal_index.read().unwrap();
         let semantic = self.semantic_index.read().unwrap();
 
-        let mut report = edge_cases::IndexConsistencyReport::default();
-        report.total_blocks = log.len();
+        let mut report = edge_cases::IndexConsistencyReport {
+            total_blocks: log.len(),
+            ..Default::default()
+        };
 
         for seq in 0..log.len() {
             if let Some(block) = log.get(seq) {
@@ -427,12 +429,10 @@ impl MemoryEngineV3 {
         content: BlockContent,
     ) -> Result<BlockHash, std::io::Error> {
         // Acquire write lock with poisoning recovery
-        let mut log = self.log.write().map_err(|e| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Log lock poisoned: {}", e),
-            )
-        })?;
+        let mut log = self
+            .log
+            .write()
+            .map_err(|e| std::io::Error::other(format!("Log lock poisoned: {}", e)))?;
 
         let block = log.append(block_type, content)?;
         let hash = block.hash;

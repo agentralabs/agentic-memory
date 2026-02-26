@@ -22,6 +22,7 @@ impl WriteAheadLog {
             .read(true)
             .write(true)
             .create(true)
+            .truncate(false)
             .open(&path)?;
 
         let mut wal = Self {
@@ -230,10 +231,7 @@ impl WriteAheadLog {
             }
         }
 
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "Could not find next valid WAL entry",
-        ))
+        Err(std::io::Error::other("Could not find next valid WAL entry"))
     }
 
     /// Clear WAL after successful checkpoint

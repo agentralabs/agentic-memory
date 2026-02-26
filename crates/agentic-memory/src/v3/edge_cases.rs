@@ -148,7 +148,7 @@ pub fn check_disk_space(path: &Path, needed: usize) -> Result<(), StorageError> 
 
     // Try to estimate available space by writing a test
     let test_file = dir.join(".space_test");
-    match std::fs::write(&test_file, &vec![0u8; std::cmp::min(needed, 4096)]) {
+    match std::fs::write(&test_file, vec![0u8; std::cmp::min(needed, 4096)]) {
         Ok(_) => {
             let _ = std::fs::remove_file(&test_file);
             Ok(())
@@ -383,7 +383,7 @@ impl ProjectIsolation {
     pub fn detect_or_create() -> Self {
         let project_id = std::env::var("CLAUDE_PROJECT_ID")
             .ok()
-            .or_else(|| Self::detect_from_cwd())
+            .or_else(Self::detect_from_cwd)
             .unwrap_or_else(Self::generate_project_id);
 
         let project_dir = Self::project_data_dir(&project_id);
