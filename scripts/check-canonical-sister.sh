@@ -13,6 +13,7 @@ SISTER_NAME="AgenticMemory"
 FRONTMATTER_EXTRA=(
   "docs/public/file-format.md"
   "docs/public/rust-api.md"
+  "docs/public/v3-architecture.md"
 )
 # ── End sister-specific configuration ────────────────────────────────────────
 

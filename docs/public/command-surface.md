@@ -119,6 +119,54 @@ All tools exposed by the `agentic-memory-mcp` MCP server:
 | `session_end` | End a session and optionally create episode summary |
 | `memory_session_resume` | Load context from previous sessions (last summary, recent decisions, key facts) |
 
+## V3 MCP Tools (v0.4)
+
+V3 adds 13 immutable-capture MCP tools and 6 session resources.
+
+### Capture Tools
+
+| Tool | Purpose |
+|------|---------|
+| `memory_capture_message` | Capture user/assistant messages |
+| `memory_capture_tool` | Capture tool calls with input/output |
+| `memory_capture_file` | Capture file operations |
+| `memory_capture_decision` | Capture decisions with reasoning |
+| `memory_capture_boundary` | Capture session boundaries (compaction, etc.) |
+
+### Retrieval Tools
+
+| Tool | Purpose |
+|------|---------|
+| `memory_retrieve` | Smart context assembly with token budgeting |
+| `memory_resurrect` | Restore full state at any timestamp |
+| `memory_v3_session_resume` | Load context for session continuation |
+
+### Search Tools
+
+| Tool | Purpose |
+|------|---------|
+| `memory_search_temporal` | Search by time range |
+| `memory_search_semantic` | Search by meaning/text |
+| `memory_search_entity` | Search by file/person/entity |
+
+### Stats Tools
+
+| Tool | Purpose |
+|------|---------|
+| `memory_v3_stats` | Storage and index statistics |
+| `memory_verify_integrity` | Cryptographic integrity verification |
+
+### V3 MCP Resources
+
+| Resource URI | Content |
+|------|---------|
+| `memory://v3/session/context` | Full session context |
+| `memory://v3/session/decisions` | Recent decisions |
+| `memory://v3/session/files` | Files modified |
+| `memory://v3/session/errors` | Errors resolved |
+| `memory://v3/session/activity` | Recent activity |
+| `memory://v3/stats` | Storage statistics |
+
 ## MCP runtime capture controls
 
 ```bash

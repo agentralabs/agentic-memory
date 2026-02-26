@@ -15,7 +15,8 @@
     "rust-api",
     "benchmarks",
     "faq",
-    "playbooks-agent-integration"
+    "playbooks-agent-integration",
+    "v3-architecture"
   ],
   "slug_by_id": {}
 }
