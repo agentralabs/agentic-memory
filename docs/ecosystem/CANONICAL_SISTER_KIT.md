@@ -106,6 +106,17 @@ This document is the single baseline contract for all current and future sisters
   - `docs/benchmarks.md`
   - `docs/api-reference.md`
   - plus at least one advanced technical page (`docs/file-format.md` or `docs/LIMITATIONS.md`)
+- **Standard reference doc pages** (mandatory in `docs/public/` for every sister):
+  - `architecture.md` — workspace structure, crate responsibilities, data flow, file format
+  - `cli-reference.md` — complete CLI command reference with global options and subcommands
+  - `configuration.md` — environment variables, config files, runtime modes, defaults
+  - `ffi-reference.md` — C FFI function signatures, parameters, return values, language examples
+  - `mcp-tools.md` — all MCP tools with parameter tables, types, descriptions, return values
+  - `mcp-resources.md` — MCP resources with URI scheme, formats, cross-sister references
+  - `mcp-prompts.md` — MCP prompts with arguments, behavior descriptions, examples
+  - `troubleshooting.md` — installation issues, MCP server issues, common errors, performance tips
+  - These 8 pages are enforced by guardrail Section 47 in `scripts/check-canonical-consistency.sh`
+  - A sister is not release-ready if any standard reference doc page is missing
 - web docs wiring is mandatory before release:
   - sister docs must be discoverable from https://agentralabs.tech/docs/sister-docs-catalog
   - sync pipeline must include the sister in docs generation (`docs:sync`) and publish navigation entries
