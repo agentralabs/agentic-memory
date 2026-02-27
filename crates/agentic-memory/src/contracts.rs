@@ -28,36 +28,37 @@ use crate::types::{AmemError, CognitiveEvent, DEFAULT_DIMENSION};
 impl From<AmemError> for SisterError {
     fn from(e: AmemError) -> Self {
         match &e {
-            AmemError::NodeNotFound(id) => {
-                SisterError::not_found(format!("node {}", id))
-            }
+            AmemError::NodeNotFound(id) => SisterError::not_found(format!("node {}", id)),
             AmemError::InvalidMagic => {
                 SisterError::new(ErrorCode::VersionMismatch, "Invalid .amem magic bytes")
             }
-            AmemError::UnsupportedVersion(v) => {
-                SisterError::new(ErrorCode::VersionMismatch, format!("Unsupported .amem version: {}", v))
-            }
-            AmemError::ContentTooLarge { size, max } => {
-                SisterError::new(ErrorCode::InvalidInput, format!("Content too large: {} > {} bytes", size, max))
-            }
-            AmemError::DimensionMismatch { expected, got } => {
-                SisterError::new(ErrorCode::InvalidInput, format!("Dimension mismatch: expected {}, got {}", expected, got))
-            }
-            AmemError::InvalidConfidence(v) => {
-                SisterError::new(ErrorCode::InvalidInput, format!("Confidence must be [0.0, 1.0], got {}", v))
-            }
+            AmemError::UnsupportedVersion(v) => SisterError::new(
+                ErrorCode::VersionMismatch,
+                format!("Unsupported .amem version: {}", v),
+            ),
+            AmemError::ContentTooLarge { size, max } => SisterError::new(
+                ErrorCode::InvalidInput,
+                format!("Content too large: {} > {} bytes", size, max),
+            ),
+            AmemError::DimensionMismatch { expected, got } => SisterError::new(
+                ErrorCode::InvalidInput,
+                format!("Dimension mismatch: expected {}, got {}", expected, got),
+            ),
+            AmemError::InvalidConfidence(v) => SisterError::new(
+                ErrorCode::InvalidInput,
+                format!("Confidence must be [0.0, 1.0], got {}", v),
+            ),
             AmemError::Io(io_err) => {
                 SisterError::new(ErrorCode::StorageError, format!("I/O error: {}", io_err))
             }
             AmemError::Truncated => {
                 SisterError::new(ErrorCode::StorageError, "File is empty or truncated")
             }
-            AmemError::Corrupt(offset) => {
-                SisterError::new(ErrorCode::ChecksumMismatch, format!("Corrupt data at offset {}", offset))
-            }
-            _ => {
-                SisterError::new(ErrorCode::MemoryError, e.to_string())
-            }
+            AmemError::Corrupt(offset) => SisterError::new(
+                ErrorCode::ChecksumMismatch,
+                format!("Corrupt data at offset {}", offset),
+            ),
+            _ => SisterError::new(ErrorCode::MemoryError, e.to_string()),
         }
     }
 }
@@ -161,8 +162,7 @@ impl Sister for MemorySister {
             if path.exists() {
                 #[cfg(feature = "format")]
                 {
-                    crate::format::AmemReader::read_from_file(path)
-                        .map_err(SisterError::from)?
+                    crate::format::AmemReader::read_from_file(path).map_err(SisterError::from)?
                 }
                 #[cfg(not(feature = "format"))]
                 {
@@ -212,7 +212,8 @@ impl Sister for MemorySister {
         #[cfg(feature = "format")]
         if let Some(ref path) = self.file_path {
             let writer = crate::format::AmemWriter::new(self.graph.dimension());
-            writer.write_to_file(&self.graph, path)
+            writer
+                .write_to_file(&self.graph, path)
                 .map_err(SisterError::from)?;
         }
 
@@ -225,7 +226,10 @@ impl Sister for MemorySister {
             Capability::new("memory_query", "Query memory by filters"),
             Capability::new("memory_ground", "Verify claims against stored memories"),
             Capability::new("memory_evidence", "Get detailed evidence for a query"),
-            Capability::new("memory_suggest", "Find similar memories when exact match fails"),
+            Capability::new(
+                "memory_suggest",
+                "Find similar memories when exact match fails",
+            ),
             Capability::new("memory_similar", "Find semantically similar memories"),
             Capability::new("memory_traverse", "Walk the graph following edges"),
             Capability::new("memory_temporal", "Compare knowledge across time periods"),
@@ -280,9 +284,10 @@ impl SessionManagement for MemorySister {
     }
 
     fn current_session_info(&self) -> SisterResult<ContextInfo> {
-        let session = self.current_session.as_ref().ok_or_else(|| {
-            SisterError::new(ErrorCode::InvalidState, "No active session")
-        })?;
+        let session = self
+            .current_session
+            .as_ref()
+            .ok_or_else(|| SisterError::new(ErrorCode::InvalidState, "No active session"))?;
 
         let nodes_in_session = self.graph.node_count() - session.node_count_at_start;
 
@@ -409,23 +414,19 @@ impl Grounding for MemorySister {
 
         if matches.is_empty() {
             return Ok(
-                GroundingResult::ungrounded(claim, "No matching memories found")
-                    .with_suggestions(
-                        self.graph
-                            .nodes()
-                            .iter()
-                            .rev()
-                            .take(3)
-                            .map(|n| n.content.clone())
-                            .collect(),
-                    ),
+                GroundingResult::ungrounded(claim, "No matching memories found").with_suggestions(
+                    self.graph
+                        .nodes()
+                        .iter()
+                        .rev()
+                        .take(3)
+                        .map(|n| n.content.clone())
+                        .collect(),
+                ),
             );
         }
 
-        let best_score = matches
-            .iter()
-            .map(|m| m.score)
-            .fold(0.0f32, f32::max);
+        let best_score = matches.iter().map(|m| m.score).fold(0.0f32, f32::max);
 
         let evidence: Vec<GroundingEvidence> = matches
             .iter()
@@ -481,8 +482,9 @@ impl Grounding for MemorySister {
             .iter()
             .filter_map(|m| {
                 self.graph.get_node(m.node_id).map(|node| {
-                    let created_at = chrono::DateTime::from_timestamp_micros(node.created_at as i64)
-                        .unwrap_or_default();
+                    let created_at =
+                        chrono::DateTime::from_timestamp_micros(node.created_at as i64)
+                            .unwrap_or_default();
 
                     EvidenceDetail {
                         evidence_type: "memory_node".to_string(),
@@ -674,10 +676,8 @@ impl Queryable for MemorySister {
             QueryTypeInfo::new("search", "Search memories by text (BM25)")
                 .required(vec!["text"])
                 .optional(vec!["limit"]),
-            QueryTypeInfo::new("recent", "Get most recent memories")
-                .optional(vec!["limit"]),
-            QueryTypeInfo::new("get", "Get a specific memory node by ID")
-                .required(vec!["id"]),
+            QueryTypeInfo::new("recent", "Get most recent memories").optional(vec!["limit"]),
+            QueryTypeInfo::new("get", "Get a specific memory node by ID").required(vec!["id"]),
         ]
     }
 }
@@ -689,8 +689,7 @@ impl Queryable for MemorySister {
 #[cfg(feature = "format")]
 impl FileFormatReader for MemorySister {
     fn read_file(path: &Path) -> SisterResult<Self> {
-        let graph = crate::format::AmemReader::read_from_file(path)
-            .map_err(SisterError::from)?;
+        let graph = crate::format::AmemReader::read_from_file(path).map_err(SisterError::from)?;
         Ok(Self::from_graph(graph, Some(path.to_path_buf())))
     }
 
@@ -704,10 +703,8 @@ impl FileFormatReader for MemorySister {
                 "File too small for .amem format",
             ));
         }
-        let header = crate::types::FileHeader::read_from(
-            &mut std::io::Cursor::new(&data[..64]),
-        )
-        .map_err(SisterError::from)?;
+        let header = crate::types::FileHeader::read_from(&mut std::io::Cursor::new(&data[..64]))
+            .map_err(SisterError::from)?;
 
         let metadata = std::fs::metadata(path)
             .map_err(|e| SisterError::new(ErrorCode::StorageError, e.to_string()))?;
@@ -717,7 +714,9 @@ impl FileFormatReader for MemorySister {
             version: Version::new(header.version as u8, 0, 0),
             created_at: chrono::Utc::now(), // .amem doesn't store creation time in header
             updated_at: chrono::DateTime::from(
-                metadata.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH),
+                metadata
+                    .modified()
+                    .unwrap_or(std::time::SystemTime::UNIX_EPOCH),
             ),
             content_length: metadata.len(),
             needs_migration: header.version < crate::types::FORMAT_VERSION,
@@ -734,10 +733,8 @@ impl FileFormatReader for MemorySister {
                 "File too small for .amem format",
             ));
         }
-        let header = crate::types::FileHeader::read_from(
-            &mut std::io::Cursor::new(&data[..64]),
-        )
-        .map_err(SisterError::from)?;
+        let header = crate::types::FileHeader::read_from(&mut std::io::Cursor::new(&data[..64]))
+            .map_err(SisterError::from)?;
         Ok(Version::new(header.version as u8, 0, 0))
     }
 
@@ -754,14 +751,16 @@ impl FileFormatReader for MemorySister {
 impl FileFormatWriter for MemorySister {
     fn write_file(&self, path: &Path) -> SisterResult<()> {
         let writer = crate::format::AmemWriter::new(self.graph.dimension());
-        writer.write_to_file(&self.graph, path)
+        writer
+            .write_to_file(&self.graph, path)
             .map_err(SisterError::from)
     }
 
     fn to_bytes(&self) -> SisterResult<Vec<u8>> {
         let writer = crate::format::AmemWriter::new(self.graph.dimension());
         let mut buffer = Vec::new();
-        writer.write_to(&self.graph, &mut buffer)
+        writer
+            .write_to(&self.graph, &mut buffer)
             .map_err(SisterError::from)?;
         Ok(buffer)
     }
@@ -777,8 +776,7 @@ mod tests {
     use crate::types::{CognitiveEventBuilder, EventType};
 
     fn make_test_sister() -> MemorySister {
-        let config = SisterConfig::stateless()
-            .option("dimension", DEFAULT_DIMENSION);
+        let config = SisterConfig::stateless().option("dimension", DEFAULT_DIMENSION);
         MemorySister::init(config).unwrap()
     }
 
@@ -798,7 +796,10 @@ mod tests {
                 .session_id(session_id)
                 .build(),
         ];
-        sister.write_engine.ingest(&mut sister.graph, events, vec![]).unwrap();
+        sister
+            .write_engine
+            .ingest(&mut sister.graph, events, vec![])
+            .unwrap();
     }
 
     /// Helper to build BM25 term index and doc lengths for text search tests.
@@ -874,8 +875,7 @@ mod tests {
         // Ground a claim that should match
         let result = sister.ground("sky is blue").unwrap();
         assert!(
-            result.status == GroundingStatus::Verified
-                || result.status == GroundingStatus::Partial,
+            result.status == GroundingStatus::Verified || result.status == GroundingStatus::Partial,
             "Expected verified or partial, got {:?}",
             result.status
         );
@@ -895,10 +895,7 @@ mod tests {
 
         let evidence = sister.evidence("rust", 10).unwrap();
         // BM25 should find the "Rust is fast" node
-        assert!(
-            !evidence.is_empty(),
-            "Expected evidence for 'rust' query"
-        );
+        assert!(!evidence.is_empty(), "Expected evidence for 'rust' query");
         assert_eq!(evidence[0].source_sister, SisterType::Memory);
     }
 
@@ -942,10 +939,7 @@ mod tests {
         build_indexes(&mut sister);
 
         let result = sister.search("rust").unwrap();
-        assert!(
-            !result.is_empty(),
-            "Expected search results for 'rust'"
-        );
+        assert!(!result.is_empty(), "Expected search results for 'rust'");
     }
 
     #[test]
