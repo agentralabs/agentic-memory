@@ -12,7 +12,7 @@ exclude = [
 ]
 
 [workspace.package]
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/agentralabs/agentic-memory"
@@ -26,6 +26,9 @@ tokio = { version = "1.35", features = ["full"] }
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tempfile = "3"
+
+# Contracts (shared traits for all sisters)
+agentic-contracts = { version = "0.2.0", path = "../agentic-contracts" }
 
 # Internal crates
 agentic-memory = { path = "crates/agentic-memory" }

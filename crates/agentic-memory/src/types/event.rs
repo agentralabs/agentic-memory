@@ -1,12 +1,12 @@
 //! Cognitive event types and the core event struct.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::{now_micros, DEFAULT_DIMENSION, MAX_CONTENT_SIZE};
 use crate::types::error::{AmemError, AmemResult};
 
 /// The type of cognitive event stored in a node.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum EventType {
     /// Something the agent learned about the world or the user.
@@ -70,7 +70,7 @@ impl std::fmt::Display for EventType {
 }
 
 /// A single cognitive event — the atomic unit of agent memory.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CognitiveEvent {
     /// Unique identifier (assigned sequentially).
     pub id: u64,
@@ -91,7 +91,7 @@ pub struct CognitiveEvent {
     /// The actual content of this event (UTF-8 text, will be compressed in file).
     pub content: String,
     /// Feature vector for similarity operations (dimension = DEFAULT_DIMENSION).
-    #[serde(skip_serializing)]
+    #[serde(skip_serializing, default)]
     pub feature_vec: Vec<f32>,
 }
 
