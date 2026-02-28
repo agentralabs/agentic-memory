@@ -19,6 +19,7 @@ use super::{
     invention_transcendent,
     memory_add,
     memory_causal,
+    memory_compact,
     memory_context,
     memory_correct,
     memory_evidence,
@@ -78,6 +79,8 @@ impl ToolRegistry {
             // Session continuity (bootstrap problem solver)
             memory_session_resume::definition(),
         ];
+        // Consolidated compact facade tools.
+        tools.extend(memory_compact::definitions());
         // 24 Inventions — INFINITUS (~100 tools)
         tools.extend(invention_infinite::all_definitions()); // 17 tools
         tools.extend(invention_prophetic::all_definitions()); // 16 tools
@@ -88,6 +91,11 @@ impl ToolRegistry {
         tools
     }
 
+    /// List only consolidated compact facade tool definitions.
+    pub fn list_tools_compact() -> Vec<ToolDefinition> {
+        memory_compact::definitions()
+    }
+
     /// Dispatch a tool call to the appropriate handler.
     pub async fn call(
         name: &str,
@@ -95,6 +103,10 @@ impl ToolRegistry {
         session: &Arc<Mutex<SessionManager>>,
     ) -> McpResult<ToolCallResult> {
         let args = arguments.unwrap_or(Value::Object(serde_json::Map::new()));
+
+        if let Some(result) = memory_compact::try_execute(name, args.clone(), session).await {
+            return result;
+        }
 
         match name {
             "conversation_log" => conversation_log::execute(args, session).await,

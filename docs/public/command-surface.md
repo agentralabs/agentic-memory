@@ -119,6 +119,31 @@ All tools exposed by the `agentic-memory-mcp` MCP server:
 | `session_end` | End a session and optionally create episode summary |
 | `memory_session_resume` | Load context from previous sessions (last summary, recent decisions, key facts) |
 
+### Compact Facade Tools (v0.4+)
+
+Use these to keep MCP tool surfaces small while preserving backward compatibility:
+
+| Tool | Purpose |
+|------|---------|
+| `memory_core` | Unified core operations via `operation` |
+| `memory_grounding` | Unified grounding operations via `operation` |
+| `memory_workspace` | Unified workspace operations via `operation` |
+| `memory_session` | Unified session operations via `operation` |
+| `memory_infinite` | Unified INFINITE invention operations via `operation` |
+| `memory_prophetic` | Unified PROPHETIC invention operations via `operation` |
+| `memory_collective` | Unified COLLECTIVE invention operations via `operation` |
+| `memory_resurrection` | Unified RESURRECTION invention operations via `operation` |
+| `memory_metamemory` | Unified METAMEMORY invention operations via `operation` |
+| `memory_transcendent` | Unified TRANSCENDENT invention operations via `operation` |
+
+Compact list mode:
+
+```bash
+export AMEM_MCP_TOOL_SURFACE=compact
+```
+
+In compact mode, `tools/list` returns only the 10 facade tools above, while all legacy tool names remain callable.
+
 ## V3 MCP Tools (v0.4)
 
 V3 adds 13 immutable-capture MCP tools and 6 session resources.

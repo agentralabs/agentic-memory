@@ -3,6 +3,7 @@
 pub mod conversation_log;
 pub mod memory_add;
 pub mod memory_causal;
+pub mod memory_compact;
 pub mod memory_context;
 pub mod memory_correct;
 pub mod memory_evidence;
