@@ -1,5 +1,6 @@
 //! Transport layer — I/O for stdio and SSE.
 
+pub mod capture;
 pub mod framing;
 pub mod stdio;
 

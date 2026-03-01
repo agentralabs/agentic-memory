@@ -39,6 +39,7 @@ anyhow = "1.0"
 
 # UUID generation (for request IDs, progress tokens)
 uuid = { version = "1.6", features = ["v4"] }
+crc32fast = "1.4"
 
 # HTTP server for SSE transport (optional feature)
 axum = { version = "0.7", optional = true }

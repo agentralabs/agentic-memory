@@ -190,6 +190,22 @@ pub async fn try_execute(
     args: Value,
     session: &Arc<Mutex<SessionManager>>,
 ) -> Option<McpResult<ToolCallResult>> {
+    if !matches!(
+        name,
+        "memory_core"
+            | "memory_grounding"
+            | "memory_workspace"
+            | "memory_session"
+            | "memory_infinite"
+            | "memory_prophetic"
+            | "memory_collective"
+            | "memory_resurrection"
+            | "memory_metamemory"
+            | "memory_transcendent"
+    ) {
+        return None;
+    }
+
     let (operation, params) = match decode_operation(args) {
         Ok(v) => v,
         Err(e) => return Some(Err(e)),

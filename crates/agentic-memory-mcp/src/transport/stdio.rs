@@ -3,6 +3,7 @@
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 
 use crate::protocol::ProtocolHandler;
+use crate::transport::capture::TransportCapture;
 use crate::types::{JsonRpcError, McpError, McpResult, RequestId, JSONRPC_VERSION};
 
 use super::framing;
@@ -29,6 +30,7 @@ impl StdioTransport {
         let mut line = String::new();
         let mut content_length: Option<usize> = None;
         let mut framed_output = false;
+        let mut capture = TransportCapture::from_env().map_err(McpError::Io)?;
 
         tracing::info!("Stdio transport started");
 
@@ -76,12 +78,14 @@ impl StdioTransport {
                 if trimmed.is_empty() {
                     let mut body = vec![0u8; n];
                     reader.read_exact(&mut body).await.map_err(McpError::Io)?;
+                    capture.capture_inbound(&body).map_err(McpError::Io)?;
                     let payload = String::from_utf8_lossy(&body).to_string();
 
                     if self
-                        .process_message(&payload, framed_output, &mut stdout)
+                        .process_message(&payload, framed_output, &mut stdout, &mut capture)
                         .await?
                     {
+                        capture.sync().map_err(McpError::Io)?;
                         break;
                     }
                     content_length = None;
@@ -96,14 +100,19 @@ impl StdioTransport {
                 continue;
             }
 
+            capture
+                .capture_inbound(trimmed.as_bytes())
+                .map_err(McpError::Io)?;
             if self
-                .process_message(trimmed, framed_output, &mut stdout)
+                .process_message(trimmed, framed_output, &mut stdout, &mut capture)
                 .await?
             {
+                capture.sync().map_err(McpError::Io)?;
                 break;
             }
         }
 
+        capture.sync().map_err(McpError::Io)?;
         Ok(())
     }
 
@@ -112,11 +121,12 @@ impl StdioTransport {
         input: &str,
         framed_output: bool,
         stdout: &mut tokio::io::Stdout,
+        capture: &mut TransportCapture,
     ) -> McpResult<bool> {
         match framing::parse_message(input.trim()) {
             Ok(msg) => {
                 if let Some(response) = self.handler.handle_message(msg).await {
-                    self.write_response(stdout, &response, framed_output)
+                    self.write_response(stdout, &response, framed_output, capture)
                         .await?;
                 }
                 if self.handler.shutdown_requested() {
@@ -137,7 +147,8 @@ impl StdioTransport {
                 };
                 let value = serde_json::to_value(error_response)
                     .map_err(|err| McpError::InternalError(err.to_string()))?;
-                self.write_response(stdout, &value, framed_output).await?;
+                self.write_response(stdout, &value, framed_output, capture)
+                    .await?;
             }
         }
         Ok(false)
@@ -148,9 +159,14 @@ impl StdioTransport {
         stdout: &mut tokio::io::Stdout,
         response: &serde_json::Value,
         framed_output: bool,
+        capture: &mut TransportCapture,
     ) -> McpResult<()> {
+        let json = serde_json::to_string(response).map_err(McpError::Json)?;
+        capture
+            .capture_outbound(json.as_bytes())
+            .map_err(McpError::Io)?;
+
         if framed_output {
-            let json = serde_json::to_string(response).map_err(McpError::Json)?;
             let header = format!("Content-Length: {}\r\n\r\n", json.len());
             stdout
                 .write_all(header.as_bytes())
@@ -164,7 +180,7 @@ impl StdioTransport {
             return Ok(());
         }
 
-        let framed = framing::frame_message(response)?;
+        let framed = format!("{json}\n");
         stdout
             .write_all(framed.as_bytes())
             .await
