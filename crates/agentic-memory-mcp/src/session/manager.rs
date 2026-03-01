@@ -267,8 +267,19 @@ impl SessionManager {
 
         let graph = if file_existed {
             tracing::info!("Opening existing memory file: {}", file_path.display());
-            AmemReader::read_from_file(&file_path)
-                .map_err(|e| McpError::AgenticMemory(format!("Failed to read memory file: {e}")))?
+            match AmemReader::read_from_file(&file_path) {
+                Ok(g) => g,
+                Err(e) => {
+                    tracing::error!("Corrupt memory file, backing up and starting fresh: {e}");
+                    let backup = format!("{}.corrupt.bak", file_path.display());
+                    if let Err(copy_err) = std::fs::rename(&file_path, &backup) {
+                        tracing::warn!("Could not rename corrupt file to {backup}: {copy_err}");
+                    } else {
+                        tracing::info!("Corrupt file backed up to {backup}");
+                    }
+                    MemoryGraph::new(dimension)
+                }
+            }
         } else {
             tracing::info!("Creating new memory file: {}", file_path.display());
             // Ensure parent directory exists
