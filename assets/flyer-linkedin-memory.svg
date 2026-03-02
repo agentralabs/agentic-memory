@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 627" width="1200" height="627">
+  <defs>
+    <pattern id="grid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="12" r="0.7" fill="#2a2a2a"/>
+    </pattern>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&amp;family=Sora:wght@400;600;700;800&amp;display=swap');
+      .mono { font-family:'IBM Plex Mono','JetBrains Mono',monospace; }
+      .sans { font-family:'Sora','Space Grotesk',sans-serif; }
+    </style>
+  </defs>
+
+  <!-- Dark background -->
+  <rect width="1200" height="627" fill="#0c0c0c"/>
+  <rect width="1200" height="627" fill="url(#grid)"/>
+
+  <!-- Subtle border -->
+  <rect x="1" y="1" width="1198" height="625" rx="0" fill="none" stroke="#1f1f1f" stroke-width="1"/>
+
+  <!-- ============ LEFT SIDE: Story ============ -->
+
+  <!-- Top label -->
+  <text x="72" y="52" class="mono" font-size="10" fill="#555" letter-spacing="2.5">OPEN SOURCE</text>
+  <rect x="138" y="40" width="4" height="4" rx="2" fill="#22c55e"/>
+
+  <!-- Main headline -->
+  <text x="72" y="112" class="sans" font-size="42" font-weight="800" fill="#f5f5f5" letter-spacing="-0.5">Every AI agent</text>
+  <text x="72" y="162" class="sans" font-size="42" font-weight="800" fill="#f5f5f5" letter-spacing="-0.5">has amnesia.</text>
+  <text x="72" y="222" class="sans" font-size="42" font-weight="800" fill="#ea580c" letter-spacing="-0.5">We built the cure.</text>
+
+  <!-- Problem statement -->
+  <line x1="72" y1="248" x2="480" y2="248" stroke="#222" stroke-width="1"/>
+  <text x="72" y="278" class="sans" font-size="14" fill="#888" letter-spacing="0.2">Claude forgets you exist. GPT doesn't know what</text>
+  <text x="72" y="300" class="sans" font-size="14" fill="#888" letter-spacing="0.2">it told you. Every session starts from zero.</text>
+
+  <!-- Solution insight -->
+  <text x="72" y="342" class="sans" font-size="15" font-weight="700" fill="#ddd" letter-spacing="0.2">AgenticMemory stores knowledge as a navigable</text>
+  <text x="72" y="366" class="sans" font-size="15" font-weight="700" fill="#ddd" letter-spacing="0.2">cognitive graph — not a search index.</text>
+
+  <!-- Key differentiator -->
+  <rect x="72" y="390" width="420" height="44" rx="6" fill="#141414" stroke="#ea580c" stroke-width="0.6" opacity="0.8"/>
+  <text x="86" y="418" class="mono" font-size="13" fill="#ea580c" letter-spacing="0.3">Your AI doesn't search memories. It navigates them.</text>
+
+  <!-- Capabilities -->
+  <g transform="translate(72, 462)">
+    <circle cx="6" cy="6" r="3" fill="#6366f1"/>
+    <text x="18" y="10" class="mono" font-size="12" fill="#999">Self-correcting supersession chains</text>
+    <circle cx="6" cy="30" r="3" fill="#22c55e"/>
+    <text x="18" y="34" class="mono" font-size="12" fill="#999">Single .amem file — any LLM, any time</text>
+    <circle cx="6" cy="54" r="3" fill="#f59e0b"/>
+    <text x="18" y="58" class="mono" font-size="12" fill="#999">Designed for a 20-year lifespan</text>
+  </g>
+
+  <!-- ============ RIGHT SIDE: Graph + Stats ============ -->
+
+  <!-- Cognitive graph visualization -->
+  <g transform="translate(680, 40)">
+    <!-- Orbital rings -->
+    <ellipse cx="200" cy="180" rx="170" ry="170" fill="none" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="3 6"/>
+    <ellipse cx="200" cy="180" rx="105" ry="105" fill="none" stroke="#151515" stroke-width="1" stroke-dasharray="2 8"/>
+
+    <!-- Edges (behind nodes) -->
+    <line x1="200" y1="180" x2="90" y2="90" stroke="#ea580c" stroke-width="0.8" opacity="0.3"/>
+    <line x1="200" y1="180" x2="320" y2="70" stroke="#6366f1" stroke-width="0.8" opacity="0.3"/>
+    <line x1="200" y1="180" x2="360" y2="210" stroke="#22c55e" stroke-width="0.8" opacity="0.3"/>
+    <line x1="200" y1="180" x2="70" y2="260" stroke="#8b5cf6" stroke-width="0.8" opacity="0.3"/>
+    <line x1="200" y1="180" x2="310" y2="310" stroke="#f59e0b" stroke-width="0.8" opacity="0.3"/>
+    <line x1="200" y1="180" x2="100" y2="320" stroke="#a78bfa" stroke-width="0.8" opacity="0.3"/>
+
+    <!-- Cross edges -->
+    <line x1="90" y1="90" x2="320" y2="70" stroke="#333" stroke-width="0.5" opacity="0.2"/>
+    <line x1="360" y1="210" x2="310" y2="310" stroke="#333" stroke-width="0.5" opacity="0.2"/>
+    <line x1="70" y1="260" x2="100" y2="320" stroke="#333" stroke-width="0.5" opacity="0.2"/>
+
+    <!-- Center node -->
+    <circle cx="200" cy="180" r="24" fill="#ea580c" opacity="0.08"/>
+    <circle cx="200" cy="180" r="14" fill="#ea580c" opacity="0.15"/>
+    <circle cx="200" cy="180" r="6" fill="#ea580c"/>
+    <text x="200" y="218" class="mono" font-size="9" fill="#ea580c" text-anchor="middle" letter-spacing="0.5">.amem</text>
+
+    <!-- fact node -->
+    <circle cx="90" cy="90" r="16" fill="#6366f1" opacity="0.08"/>
+    <circle cx="90" cy="90" r="5" fill="#6366f1"/>
+    <text x="90" y="72" class="mono" font-size="8" fill="#555" text-anchor="middle">fact</text>
+
+    <!-- decision node -->
+    <circle cx="320" cy="70" r="16" fill="#ea580c" opacity="0.08"/>
+    <circle cx="320" cy="70" r="5" fill="#ea580c"/>
+    <text x="320" y="52" class="mono" font-size="8" fill="#555" text-anchor="middle">decision</text>
+
+    <!-- skill node -->
+    <circle cx="360" cy="210" r="16" fill="#22c55e" opacity="0.08"/>
+    <circle cx="360" cy="210" r="5" fill="#22c55e"/>
+    <text x="384" y="198" class="mono" font-size="8" fill="#555">skill</text>
+
+    <!-- inference node -->
+    <circle cx="70" cy="260" r="16" fill="#8b5cf6" opacity="0.08"/>
+    <circle cx="70" cy="260" r="5" fill="#8b5cf6"/>
+    <text x="42" y="250" class="mono" font-size="8" fill="#555">inference</text>
+
+    <!-- episode node -->
+    <circle cx="310" cy="310" r="16" fill="#f59e0b" opacity="0.08"/>
+    <circle cx="310" cy="310" r="5" fill="#f59e0b"/>
+    <text x="310" y="338" class="mono" font-size="8" fill="#555" text-anchor="middle">episode</text>
+
+    <!-- correction node -->
+    <circle cx="100" cy="320" r="14" fill="#a78bfa" opacity="0.08"/>
+    <circle cx="100" cy="320" r="4" fill="#a78bfa"/>
+    <text x="100" y="346" class="mono" font-size="8" fill="#555" text-anchor="middle">correction</text>
+  </g>
+
+  <!-- Stats strip (right side, below graph) -->
+  <g transform="translate(700, 478)">
+    <text x="20" y="0" class="mono" font-size="22" font-weight="700" fill="#ea580c">276<tspan font-size="11" fill="#555">ns</tspan></text>
+    <text x="20" y="16" class="mono" font-size="8" fill="#555" letter-spacing="0.5">add node</text>
+
+    <text x="130" y="0" class="mono" font-size="22" font-weight="700" fill="#ea580c">1.58<tspan font-size="11" fill="#555">ms</tspan></text>
+    <text x="130" y="16" class="mono" font-size="8" fill="#555" letter-spacing="0.5">search @ 100K</text>
+
+    <text x="270" y="0" class="mono" font-size="22" font-weight="700" fill="#ea580c">671</text>
+    <text x="270" y="16" class="mono" font-size="8" fill="#555" letter-spacing="0.5">tests</text>
+
+    <text x="350" y="0" class="mono" font-size="22" font-weight="700" fill="#ea580c">0</text>
+    <text x="350" y="16" class="mono" font-size="8" fill="#555" letter-spacing="0.5">deps</text>
+
+    <text x="420" y="0" class="mono" font-size="18" font-weight="700" fill="#ea580c">&lt;1GB</text>
+    <text x="420" y="16" class="mono" font-size="8" fill="#555" letter-spacing="0.5">lifetime</text>
+  </g>
+
+  <!-- Bottom brand bar -->
+  <line x1="0" y1="527" x2="1200" y2="527" stroke="#1a1a1a" stroke-width="1"/>
+
+  <!-- Logo cluster -->
+  <circle cx="90" cy="572" r="10" fill="none" stroke="#6366f1" stroke-width="1.2" opacity="0.25"/>
+  <circle cx="90" cy="572" r="4" fill="#6366f1"/>
+  <circle cx="76" cy="562" r="2.5" fill="#8b5cf6"/>
+  <circle cx="104" cy="562" r="2.5" fill="#8b5cf6"/>
+  <circle cx="79" cy="584" r="2.5" fill="#a78bfa"/>
+  <circle cx="101" cy="584" r="2.5" fill="#a78bfa"/>
+  <line x1="90" y1="572" x2="76" y2="562" stroke="#6366f1" stroke-width="0.8" opacity="0.4"/>
+  <line x1="90" y1="572" x2="104" y2="562" stroke="#6366f1" stroke-width="0.8" opacity="0.4"/>
+  <line x1="90" y1="572" x2="79" y2="584" stroke="#6366f1" stroke-width="0.8" opacity="0.4"/>
+  <line x1="90" y1="572" x2="101" y2="584" stroke="#6366f1" stroke-width="0.8" opacity="0.4"/>
+
+  <text x="122" y="569" class="sans" font-size="14" font-weight="700" fill="#e5e5e5" letter-spacing="0.3">AgenticMemory</text>
+  <text x="122" y="587" class="mono" font-size="10" fill="#555" letter-spacing="0.8">by Agentra Labs</text>
+
+  <!-- Install badge -->
+  <rect x="310" y="556" width="190" height="28" rx="6" fill="#ea580c" opacity="0.12"/>
+  <rect x="310" y="556" width="190" height="28" rx="6" fill="none" stroke="#ea580c" stroke-width="0.8" opacity="0.5"/>
+  <text x="405" y="575" class="mono" font-size="11" fill="#ea580c" text-anchor="middle" letter-spacing="0.3">pip install agentic-brain</text>
+
+  <!-- Clients -->
+  <text x="540" y="575" class="mono" font-size="10" fill="#444" letter-spacing="0.5">Claude · Cursor · Windsurf · Cody</text>
+
+  <!-- Badges -->
+  <rect x="940" y="556" width="80" height="26" rx="5" fill="none" stroke="#2a2a2a" stroke-width="0.8"/>
+  <text x="980" y="574" class="mono" font-size="10" fill="#555" text-anchor="middle" letter-spacing="0.3">MIT</text>
+
+  <rect x="1030" y="556" width="80" height="26" rx="5" fill="none" stroke="#22c55e" stroke-width="0.8" opacity="0.4"/>
+  <text x="1070" y="574" class="mono" font-size="9" fill="#22c55e" text-anchor="middle" letter-spacing="0.3" opacity="0.7">open src</text>
+
+  <!-- GitHub -->
+  <text x="1180" y="608" class="mono" font-size="9" fill="#333" text-anchor="end" letter-spacing="0.5">github.com/agentralabs/agentic-memory</text>
+</svg>
