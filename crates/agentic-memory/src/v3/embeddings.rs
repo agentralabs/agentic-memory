@@ -68,7 +68,7 @@ impl TfIdfEmbedding {
 
         // Take top N words by frequency
         let mut words: Vec<_> = word_counts.into_iter().collect();
-        words.sort_by(|a, b| b.1.cmp(&a.1));
+        words.sort_by_key(|w| std::cmp::Reverse(w.1));
 
         self.vocabulary = words
             .into_iter()

@@ -66,6 +66,7 @@ dependencies = [
  "anyhow",
  "clap",
  "clap_complete",
+ "dirs",
  "rustyline",
  "serde",
  "serde_json",

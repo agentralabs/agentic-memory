@@ -656,13 +656,11 @@ impl MemoryEngineV3 {
                     message,
                     resolution,
                     resolved,
-                } => {
-                    if *resolved {
-                        errors_resolved.push((
-                            format!("{}: {}", error_type, message),
-                            resolution.clone().unwrap_or_default(),
-                        ));
-                    }
+                } if *resolved => {
+                    errors_resolved.push((
+                        format!("{}: {}", error_type, message),
+                        resolution.clone().unwrap_or_default(),
+                    ));
                 }
                 _ => {}
             }

@@ -171,11 +171,11 @@ impl StorageBudget {
         let total_count = stats.total_count;
         let daily_growth_bytes = if total_count > 0 {
             // Assume ~1 KB per memory average, estimate from current data
-            let avg_bytes_per_memory = if stats.total_bytes > 0 {
-                stats.total_bytes / total_count
-            } else {
-                1024
-            };
+            let avg_bytes_per_memory = stats
+                .total_bytes
+                .checked_div(total_count)
+                .filter(|&avg| avg > 0)
+                .unwrap_or(1024);
             // Rough estimate: 50 memories per day for active use
             avg_bytes_per_memory * 50
         } else {
