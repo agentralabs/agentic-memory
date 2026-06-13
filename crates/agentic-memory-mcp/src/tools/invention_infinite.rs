@@ -391,7 +391,7 @@ pub async fn execute_semantic_cluster(
         }
     }
     let mut clusters: Vec<(&String, &Vec<u64>)> = keyword_groups.iter().collect();
-    clusters.sort_by(|a, b| b.1.len().cmp(&a.1.len()));
+    clusters.sort_by_key(|c| std::cmp::Reverse(c.1.len()));
     clusters.truncate(num_clusters);
     let result: Vec<Value> = clusters.iter().map(|(k, ids)| json!({"keyword": k, "size": ids.len(), "node_ids": &ids[..ids.len().min(10)]})).collect();
     Ok(ToolCallResult::json(

@@ -576,7 +576,7 @@ pub async fn execute_crystal_create(
         }
     }
     let mut patterns: Vec<(String, usize)> = word_freq.into_iter().collect();
-    patterns.sort_by(|a, b| b.1.cmp(&a.1));
+    patterns.sort_by_key(|p| std::cmp::Reverse(p.1));
     let core_patterns: Vec<&str> = patterns.iter().take(10).map(|(w, _)| w.as_str()).collect();
 
     // Type distribution

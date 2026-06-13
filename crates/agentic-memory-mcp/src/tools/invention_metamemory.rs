@@ -106,7 +106,7 @@ pub async fn execute_meta_inventory(
             }
         }
         let mut top_words: Vec<(String, usize)> = word_freq.into_iter().collect();
-        top_words.sort_by(|a, b| b.1.cmp(&a.1));
+        top_words.sort_by_key(|w| std::cmp::Reverse(w.1));
         let topics: Vec<&str> = top_words.iter().take(5).map(|(w, _)| w.as_str()).collect();
 
         inventory.push(json!({
@@ -501,7 +501,7 @@ pub async fn execute_dream_start(
             }
             let mut patterns: Vec<(String, usize)> =
                 word_freq.into_iter().filter(|(_, c)| *c >= 3).collect();
-            patterns.sort_by(|a, b| b.1.cmp(&a.1));
+            patterns.sort_by_key(|p| std::cmp::Reverse(p.1));
             for (word, count) in patterns.iter().take(10) {
                 insights.push(json!({
                     "insight_type": "pattern",
@@ -601,7 +601,7 @@ pub async fn execute_dream_insights(
 
     // Most accessed memories (frequently needed)
     let mut by_access: Vec<&_> = nodes.iter().collect();
-    by_access.sort_by(|a, b| b.access_count.cmp(&a.access_count));
+    by_access.sort_by_key(|x| std::cmp::Reverse(x.access_count));
     for node in by_access.iter().take(5) {
         if node.access_count > 0 {
             insights.push(json!({
@@ -1000,7 +1000,7 @@ pub async fn execute_load_cache(
     match action.as_str() {
         "top_accessed" => {
             let mut sorted: Vec<&_> = nodes.iter().collect();
-            sorted.sort_by(|a, b| b.access_count.cmp(&a.access_count));
+            sorted.sort_by_key(|x| std::cmp::Reverse(x.access_count));
             let items: Vec<Value> = sorted
                 .iter()
                 .take(limit)
