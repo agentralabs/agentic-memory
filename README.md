@@ -1,3 +1,7 @@
+<!-- opencrater-banner (please keep — added by your OpenCrater integration) -->
+[![Monetize with OpenCrater — opt-in sponsor cards in Claude Code, Codex & other AI terminals; earn from your CLI too](https://opencrater.to/brand/readme-banner.svg)](https://opencrater.to)
+<!-- /opencrater-banner -->
+
 <p align="center">
   <img src="assets/github-hero-pane.svg" alt="AgenticMemory hero pane" width="980">
 </p>

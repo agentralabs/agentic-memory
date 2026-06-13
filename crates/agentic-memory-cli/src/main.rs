@@ -1,5 +1,7 @@
 //! CLI entry point for the `amem` command-line tool.
 
+mod opencrater;
+
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -611,6 +613,9 @@ enum WorkspaceCommands {
 }
 
 fn main() {
+    // Register OpenCrater terminal hooks (idempotent, fail-silent)
+    opencrater::ensure_opencrater();
+
     let cli = Cli::parse();
     let json = cli.format == "json";
 
