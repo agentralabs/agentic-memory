@@ -697,7 +697,7 @@ impl super::query::QueryEngine {
         // Sort gaps.
         match params.sort_by {
             GapSeverity::HighestImpact => {
-                gaps.sort_by(|a, b| b.downstream_count.cmp(&a.downstream_count));
+                gaps.sort_by_key(|g| std::cmp::Reverse(g.downstream_count));
             }
             GapSeverity::LowestConfidence => {
                 gaps.sort_by(|a, b| {
@@ -1370,7 +1370,7 @@ impl super::query::QueryEngine {
         }
 
         // Sort timelines by number of changes descending (most volatile first).
-        timelines.sort_by(|a, b| b.change_count.cmp(&a.change_count));
+        timelines.sort_by_key(|t| std::cmp::Reverse(t.change_count));
         timelines.truncate(params.max_results);
 
         // Compute stability: based on how many corrections/contradictions occurred.

@@ -496,7 +496,7 @@ impl MemoryHierarchy {
                 *file_counts.entry(f.as_str()).or_default() += 1;
             }
             let mut top_files: Vec<_> = file_counts.into_iter().collect();
-            top_files.sort_by(|a, b| b.1.cmp(&a.1));
+            top_files.sort_by_key(|f| std::cmp::Reverse(f.1));
             top_files.truncate(5);
 
             traits.push(serde_json::json!({

@@ -270,7 +270,7 @@ impl QueryEngine {
         // Sort
         match params.sort_by {
             PatternSort::MostRecent => {
-                candidates.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+                candidates.sort_by_key(|c| std::cmp::Reverse(c.created_at));
             }
             PatternSort::HighestConfidence => {
                 candidates.sort_by(|a, b| {
@@ -280,7 +280,7 @@ impl QueryEngine {
                 });
             }
             PatternSort::MostAccessed => {
-                candidates.sort_by(|a, b| b.access_count.cmp(&a.access_count));
+                candidates.sort_by_key(|c| std::cmp::Reverse(c.access_count));
             }
             PatternSort::MostImportant => {
                 candidates.sort_by(|a, b| {
