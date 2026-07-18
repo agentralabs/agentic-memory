@@ -207,6 +207,38 @@ impl MemoryGraph {
         Ok(id)
     }
 
+    /// Add a node with an explicit ID (lossless import path).
+    ///
+    /// Returns `Ok(false)` if a node with this ID already exists (idempotent
+    /// skip — duplicate `@id` means the same node), `Ok(true)` if inserted.
+    /// `next_id` is bumped past the inserted ID so later auto-assigned IDs
+    /// never collide.
+    pub fn add_node_with_id(&mut self, mut event: CognitiveEvent, id: u64) -> AmemResult<bool> {
+        if self.get_node(id).is_some() {
+            return Ok(false);
+        }
+
+        event.validate(self.dimension)?;
+        if event.feature_vec.is_empty() {
+            event.feature_vec = vec![0.0; self.dimension];
+        } else if event.feature_vec.len() != self.dimension {
+            return Err(AmemError::DimensionMismatch {
+                expected: self.dimension,
+                got: event.feature_vec.len(),
+            });
+        }
+
+        event.id = id;
+        self.next_id = self.next_id.max(id + 1);
+
+        self.type_index.add_node(&event);
+        self.temporal_index.add_node(&event);
+        self.session_index.add_node(&event);
+        self.nodes.push(event);
+
+        Ok(true)
+    }
+
     /// Add an edge between two existing nodes.
     pub fn add_edge(&mut self, edge: Edge) -> AmemResult<()> {
         // Validate: no self-edges
