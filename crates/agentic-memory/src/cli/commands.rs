@@ -659,15 +659,9 @@ pub fn cmd_import(path: &Path, json_path: &Path) -> AmemResult<()> {
                 .unwrap_or(1.0) as f32;
 
             // Idempotent: an identical (source, target, type) edge is the same edge.
-            if graph
-                .edges()
-                .iter()
-                .any(|e| {
-                    e.source_id == source_id
-                        && e.target_id == target_id
-                        && e.edge_type == edge_type
-                })
-            {
+            if graph.edges().iter().any(|e| {
+                e.source_id == source_id && e.target_id == target_id && e.edge_type == edge_type
+            }) {
                 skipped_edges += 1;
                 continue;
             }
