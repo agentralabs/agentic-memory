@@ -516,6 +516,8 @@ pub fn cmd_export(
         .iter()
         .map(|n| {
             serde_json::json!({
+                "@id": format!("urn:amem:node:{}", n.id),
+                "@type": n.event_type.name(),
                 "id": n.id,
                 "event_type": n.event_type.name(),
                 "created_at": n.created_at,
@@ -567,13 +569,16 @@ pub fn cmd_import(path: &Path, json_path: &Path) -> AmemResult<()> {
         .map_err(|e| crate::types::AmemError::Compression(e.to_string()))?;
 
     let mut added_nodes = 0;
+    let mut skipped_nodes = 0;
     let mut added_edges = 0;
+    let mut skipped_edges = 0;
 
     if let Some(nodes) = parsed.get("nodes").and_then(|v| v.as_array()) {
         for node_val in nodes {
             let event_type = node_val
                 .get("event_type")
                 .and_then(|v| v.as_str())
+                .or_else(|| node_val.get("@type").and_then(|v| v.as_str()))
                 .and_then(EventType::from_name)
                 .unwrap_or(EventType::Fact);
             let content = node_val
@@ -588,13 +593,48 @@ pub fn cmd_import(path: &Path, json_path: &Path) -> AmemResult<()> {
                 .get("confidence")
                 .and_then(|v| v.as_f64())
                 .unwrap_or(1.0) as f32;
+            // Authoritative identity/history fields: preserve when present.
+            // `@id` is the JSON-LD form (urn:amem:node:<n>); `id` is legacy.
+            let explicit_id = node_val.get("id").and_then(|v| v.as_u64()).or_else(|| {
+                node_val
+                    .get("@id")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| s.rsplit(':').next())
+                    .and_then(|s| s.parse().ok())
+            });
+            let created_at = node_val.get("created_at").and_then(|v| v.as_u64());
 
-            let event = CognitiveEventBuilder::new(event_type, content)
+            let mut builder = CognitiveEventBuilder::new(event_type, content)
                 .session_id(session_id)
-                .confidence(confidence)
-                .build();
-            graph.add_node(event)?;
-            added_nodes += 1;
+                .confidence(confidence);
+            if let Some(ts) = created_at {
+                builder = builder.created_at(ts);
+            }
+            let mut event = builder.build();
+            // Derived/compiled-layer state: carry through when exported.
+            if let Some(v) = node_val.get("access_count").and_then(|v| v.as_u64()) {
+                event.access_count = v as u32;
+            }
+            if let Some(v) = node_val.get("last_accessed").and_then(|v| v.as_u64()) {
+                event.last_accessed = v;
+            }
+            if let Some(v) = node_val.get("decay_score").and_then(|v| v.as_f64()) {
+                event.decay_score = v as f32;
+            }
+
+            match explicit_id {
+                Some(id) => {
+                    if graph.add_node_with_id(event, id)? {
+                        added_nodes += 1;
+                    } else {
+                        skipped_nodes += 1;
+                    }
+                }
+                None => {
+                    graph.add_node(event)?;
+                    added_nodes += 1;
+                }
+            }
         }
     }
 
@@ -618,7 +658,18 @@ pub fn cmd_import(path: &Path, json_path: &Path) -> AmemResult<()> {
                 .and_then(|v| v.as_f64())
                 .unwrap_or(1.0) as f32;
 
-            let edge = Edge::new(source_id, target_id, edge_type, weight);
+            // Idempotent: an identical (source, target, type) edge is the same edge.
+            if graph.edges().iter().any(|e| {
+                e.source_id == source_id && e.target_id == target_id && e.edge_type == edge_type
+            }) {
+                skipped_edges += 1;
+                continue;
+            }
+
+            let edge = match edge_val.get("created_at").and_then(|v| v.as_u64()) {
+                Some(ts) => Edge::with_timestamp(source_id, target_id, edge_type, weight, ts),
+                None => Edge::new(source_id, target_id, edge_type, weight),
+            };
             if graph.add_edge(edge).is_ok() {
                 added_edges += 1;
             }
@@ -628,7 +679,10 @@ pub fn cmd_import(path: &Path, json_path: &Path) -> AmemResult<()> {
     let writer = AmemWriter::new(graph.dimension());
     writer.write_to_file(&graph, path)?;
 
-    println!("Imported {} nodes and {} edges", added_nodes, added_edges);
+    println!(
+        "Imported {} nodes and {} edges ({} duplicate nodes, {} duplicate edges skipped)",
+        added_nodes, added_edges, skipped_nodes, skipped_edges
+    );
     Ok(())
 }
 
